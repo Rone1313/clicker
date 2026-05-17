@@ -1,0 +1,268 @@
+:root {
+    --tg-bg: var(--tg-theme-bg-color, #17212b);
+    --tg-text: var(--tg-theme-text-color, #ffffff);
+    --tg-button: var(--tg-theme-button-color, #5288c1);
+    --tg-button-text: var(--tg-theme-button-text-color, #ffffff);
+    --tg-hint: var(--tg-theme-hint-color, #708499);
+    --tg-secondary: var(--tg-theme-secondary-bg-color, #232e3c);
+
+    --gold-1: #ffcc33;
+    --gold-2: #ff9500;
+    --gold-3: #ff6b00;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+html, body {
+    width: 100%;
+    min-height: 100vh;
+    overflow-x: hidden;
+    background: var(--tg-bg);
+    color: var(--tg-text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overscroll-behavior: none;
+}
+
+.app {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    padding: 16px;
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+/* Header */
+.header {
+    text-align: center;
+    padding: 12px 0 8px;
+}
+
+.greeting {
+    font-size: 16px;
+    color: var(--tg-hint);
+    margin-bottom: 8px;
+}
+
+.coin-counter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 44px;
+    font-weight: 800;
+    color: var(--gold-1);
+    text-shadow: 0 2px 12px rgba(255, 204, 51, 0.4);
+}
+
+.coin-icon {
+    font-size: 38px;
+}
+
+.stats {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 8px;
+    font-size: 14px;
+    color: var(--tg-hint);
+}
+
+.stats span {
+    background: var(--tg-secondary);
+    padding: 4px 10px;
+    border-radius: 12px;
+}
+
+.booster-status {
+    margin-top: 8px;
+    font-size: 14px;
+    color: var(--gold-1);
+    font-weight: 600;
+    min-height: 20px;
+}
+
+/* Main tap area */
+.main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 0;
+    position: relative;
+}
+
+.tap-button {
+    width: 240px;
+    height: 240px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    background: radial-gradient(circle at 35% 30%, #ffe066 0%, var(--gold-1) 35%, var(--gold-2) 70%, var(--gold-3) 100%);
+    box-shadow:
+        0 10px 30px rgba(255, 149, 0, 0.45),
+        0 0 60px rgba(255, 204, 51, 0.25),
+        inset 0 -8px 20px rgba(0, 0, 0, 0.2),
+        inset 0 8px 20px rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.08s ease;
+    position: relative;
+}
+
+.tap-button:active,
+.tap-button.tapped {
+    transform: scale(0.95);
+}
+
+.tap-emoji {
+    font-size: 180px;
+    line-height: 1;
+    pointer-events: none;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
+}
+
+/* Floating "+N" */
+.floating-container {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: visible;
+}
+
+.floating-coin {
+    position: absolute;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--gold-1);
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+    animation: floatUp 0.9s ease-out forwards;
+}
+
+@keyframes floatUp {
+    0% {
+        transform: translateY(0) scale(0.8);
+        opacity: 1;
+    }
+    50% {
+        transform: translateY(-60px) scale(1.2);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-140px) scale(1);
+        opacity: 0;
+    }
+}
+
+/* Upgrades */
+.upgrades {
+    padding: 12px 0 24px;
+}
+
+.upgrades-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    padding-left: 4px;
+    color: var(--tg-text);
+}
+
+.upgrade-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--tg-secondary);
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.2s ease, box-shadow 0.2s ease;
+    border: 2px solid transparent;
+}
+
+.upgrade-card.affordable {
+    border-color: var(--gold-2);
+    box-shadow: 0 0 16px rgba(255, 149, 0, 0.2);
+}
+
+.upgrade-card.affordable:hover,
+.upgrade-card.affordable:active {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(255, 149, 0, 0.4);
+}
+
+.upgrade-card.locked {
+    opacity: 0.5;
+    filter: grayscale(0.6);
+    cursor: not-allowed;
+}
+
+.upgrade-icon {
+    font-size: 36px;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 14px;
+    flex-shrink: 0;
+}
+
+.upgrade-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.upgrade-name {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+
+.upgrade-desc {
+    font-size: 12px;
+    color: var(--tg-hint);
+    margin-bottom: 4px;
+}
+
+.upgrade-level {
+    font-size: 12px;
+    color: var(--tg-hint);
+}
+
+.upgrade-price {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 204, 51, 0.12);
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--gold-1);
+    flex-shrink: 0;
+}
+
+.price-icon {
+    font-size: 16px;
+}
+
+/* Pulse */
+@keyframes pulse {
+    0%, 100% { box-shadow: 0 10px 30px rgba(255, 149, 0, 0.45), 0 0 60px rgba(255, 204, 51, 0.25), inset 0 -8px 20px rgba(0,0,0,0.2), inset 0 8px 20px rgba(255,255,255,0.3); }
+    50% { box-shadow: 0 10px 40px rgba(255, 149, 0, 0.7), 0 0 80px rgba(255, 204, 51, 0.5), inset 0 -8px 20px rgba(0,0,0,0.2), inset 0 8px 20px rgba(255,255,255,0.3); }
+}
+
+.tap-button.boosted {
+    animation: pulse 1s infinite;
+}

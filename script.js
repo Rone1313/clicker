@@ -1236,9 +1236,8 @@ games.durak = (function() {
     const botsCountEl = document.getElementById('durakBotsCount');
 
     const SUITS = ['♠','♥','♦','♣'];
-    const RANKS_36 = ['6','7','8','9','10','В','Д','К','Т'];
-    const RANKS_52 = ['2','3','4','5','6','7','8','9','10','В','Д','К','Т'];
-    const VAL = { '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'В':11,'Д':12,'К':13,'Т':14 };
+    const RANKS = ['6','7','8','9','10','В','Д','К','Т'];  // классическая колода 36 карт
+    const VAL = { '6':6,'7':7,'8':8,'9':9,'10':10,'В':11,'Д':12,'К':13,'Т':14 };
     const RED = new Set(['♥','♦']);
     const BOTS = [
         { name:'Хомяк',  avatar:'🐹' },
@@ -1260,10 +1259,9 @@ games.durak = (function() {
             [a[i], a[j]] = [a[j], a[i]];
         }
     }
-    function freshDeck(playerCount) {
-        const ranks = playerCount >= 5 ? RANKS_52 : RANKS_36;
+    function freshDeck() {
         const d = [];
-        for (const s of SUITS) for (const r of ranks) d.push({ suit:s, rank:r });
+        for (const s of SUITS) for (const r of RANKS) d.push({ suit:s, rank:r });
         return d;
     }
     function canBeat(att, def, trump) {
@@ -1289,7 +1287,7 @@ games.durak = (function() {
     function newGame(count) {
         selectedCount = count;
         localStorage.setItem('durakPlayers', String(count));
-        const deck = freshDeck(count);
+        const deck = freshDeck();
         shuffle(deck);
         const trumpCard = deck[deck.length - 1];
         const trump = trumpCard.suit;
@@ -1527,6 +1525,12 @@ games.durak = (function() {
     }
 
     function render() {
+        const currentTurnIdx = state.phase === 'defend' ? state.defenderIdx : state.turnIdx;
+        const myTurn = !state.players[0].eliminated && state.phase !== 'over' && (
+            (state.phase === 'play'   && state.turnIdx === 0) ||
+            (state.phase === 'defend' && state.defenderIdx === 0)
+        );
+
         // Оппоненты
         opponentsEl.innerHTML = '';
         for (let i = 1; i < state.players.length; i++) {
@@ -1537,6 +1541,7 @@ games.durak = (function() {
             if (!p.eliminated && state.phase !== 'over') {
                 if (i === state.attackerIdx) block.classList.add('attacker');
                 if (i === state.defenderIdx) block.classList.add('defender');
+                if (i === currentTurnIdx)    block.classList.add('turn-now');
             }
             const header = document.createElement('div');
             header.className = 'opp-name';
@@ -1639,6 +1644,10 @@ games.durak = (function() {
             else status = `${state.players[d].name} защищается…`;
         }
         statusEl.textContent = status;
+
+        // Подсветка «твой ход» вокруг зоны игрока
+        const playerZone = handEl.parentElement;
+        if (playerZone) playerZone.classList.toggle('your-turn', myTurn);
     }
 
     function makePlayabilityChecker() {

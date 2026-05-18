@@ -436,7 +436,12 @@ body {
 }
 .opp.attacker { border-color: #ffd84d; box-shadow: 0 0 12px rgba(255,216,77,0.4); }
 .opp.defender { border-color: #ff6644; box-shadow: 0 0 12px rgba(255,102,68,0.4); }
-.opp.eliminated { opacity: 0.4; }
+.opp.turn-now { animation: oppPulse 1.1s ease-in-out infinite; }
+@keyframes oppPulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.06); }
+}
+.opp.eliminated { opacity: 0.4; animation: none; }
 .opp-name { color: #fff; font-size: 13px; font-weight: 700; }
 .opp-cards {
     display: flex;
@@ -571,6 +576,31 @@ body {
     align-items: center;
     gap: 4px;
     flex-shrink: 0;
+    position: relative;
+    padding-top: 4px;
+    border-radius: 12px;
+    transition: background 0.2s, box-shadow 0.2s;
+}
+.player-zone.your-turn {
+    background: linear-gradient(180deg, transparent, rgba(255,216,77,0.12));
+    box-shadow: inset 0 1px 0 rgba(255,216,77,0.4);
+}
+.player-zone.your-turn::before {
+    content: 'ТВОЙ ХОД';
+    position: absolute;
+    top: -16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(180deg, #ffd84d, #ff9a1e);
+    color: #1a1a2e;
+    padding: 3px 12px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    box-shadow: 0 2px 8px rgba(255,216,77,0.5);
+    pointer-events: none;
+    z-index: 5;
 }
 .player-actions {
     display: flex;

@@ -8,7 +8,7 @@ if (tg) { tg.ready(); tg.expand(); }
 // ═══ КОНФИГ ═══════════════════════════════════════════════
 // Ссылка на бота для шеринга и рефералов. Замени на свою!
 // Формат: https://t.me/<bot_username>/<app_short_name>
-const BOT_LINK = 'https://t.me/HamsterArcadeBot/play';
+const BOT_LINK = 'https://t.me/Humster13_bot';
 
 // ─── Кошелёк, ежедневный бонус, рефералка ──────────────────
 const Wallet = (function() {

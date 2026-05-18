@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-//  ХОМЯК vs ТРАМП — космический шутер
+//  ХОМЯК / ЖАБА vs ТРАМП — космический шутер
 // ═══════════════════════════════════════════════════════════
 
 const tg = window.Telegram?.WebApp;
@@ -32,6 +32,42 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
+// ─── Персонажи ─────────────────────────────────────────────
+const CHARACTERS = {
+    hamster: {
+        emoji: '🐹',
+        filter: 'hue-rotate(90deg) saturate(1.6) drop-shadow(0 2px 6px rgba(0,0,0,0.6))',
+        cooldown: 220,
+        shipColor: '#4cd964',
+        glowColor: 'rgba(120, 255, 120, 0.45)',
+        bullet: 'seed',
+    },
+    frog: {
+        emoji: '🐸',
+        filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.7))',
+        cooldown: 140,
+        shipColor: '#3a8f3a',
+        glowColor: 'rgba(120, 255, 80, 0.5)',
+        bullet: 'tongue',
+    },
+};
+
+let selectedChar = localStorage.getItem('character') || 'hamster';
+
+// Применяем сохранённый выбор к UI и слушаем клики
+function initCharPick() {
+    document.querySelectorAll('.char-card').forEach(card => {
+        card.classList.toggle('selected', card.dataset.char === selectedChar);
+        card.addEventListener('click', () => {
+            document.querySelectorAll('.char-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            selectedChar = card.dataset.char;
+            localStorage.setItem('character', selectedChar);
+        });
+    });
+}
+initCharPick();
+
 // ─── Состояние игры ────────────────────────────────────────
 const game = {
     hero: null,
@@ -40,6 +76,7 @@ const game = {
     enemyBullets: [],
     particles: [],
     stars: [],
+    boss: null,
     score: 0,
     level: 1,
     levelKills: 0,
@@ -62,15 +99,17 @@ function initStars() {
     }
 }
 
-// ─── Герой-хомяк ───────────────────────────────────────────
+// ─── Герой ─────────────────────────────────────────────────
 function createHero() {
+    const c = CHARACTERS[selectedChar];
     return {
         x: W / 2,
         y: H - 110,
         targetX: W / 2,
+        targetY: H - 110,
         size: 56,
         cooldown: 0,
-        cooldownMax: 220,
+        cooldownMax: c.cooldown,
         lives: 3,
         invul: 0,
     };
@@ -83,6 +122,7 @@ function startGame() {
     game.enemies.length = 0;
     game.enemyBullets.length = 0;
     game.particles.length = 0;
+    game.boss = null;
     game.score = 0;
     game.level = 1;
     game.levelKills = 0;
@@ -101,7 +141,7 @@ function gameOver() {
     finalScore.textContent = game.score;
     if (game.score < 200)        overMsg.textContent = 'Трамп захватил галактику…';
     else if (game.score < 800)   overMsg.textContent = 'Достойное сопротивление!';
-    else if (game.score < 2000)  overMsg.textContent = 'Хомяк-герой! Почти спас всех.';
+    else if (game.score < 2000)  overMsg.textContent = 'Почти спас всех!';
     else                         overMsg.textContent = '🏆 Легенда галактики!';
     overScreen.classList.remove('hidden');
 }
@@ -109,18 +149,18 @@ function gameOver() {
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', startGame);
 
-// ─── Ввод: касание / мышь ──────────────────────────────────
-function pointerMove(clientX) {
+// ─── Ввод ──────────────────────────────────────────────────
+function pointerMove(clientX, clientY) {
     if (!game.hero) return;
     game.hero.targetX = Math.max(30, Math.min(W - 30, clientX));
+    game.hero.targetY = Math.max(110, Math.min(H - 40, clientY));
 }
 
-canvas.addEventListener('touchstart', e => { e.preventDefault(); pointerMove(e.touches[0].clientX); }, { passive: false });
-canvas.addEventListener('touchmove',  e => { e.preventDefault(); pointerMove(e.touches[0].clientX); }, { passive: false });
-canvas.addEventListener('mousemove',  e => pointerMove(e.clientX));
-canvas.addEventListener('mousedown',  e => pointerMove(e.clientX));
+canvas.addEventListener('touchstart', e => { e.preventDefault(); pointerMove(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+canvas.addEventListener('touchmove',  e => { e.preventDefault(); pointerMove(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+canvas.addEventListener('mousemove',  e => pointerMove(e.clientX, e.clientY));
+canvas.addEventListener('mousedown',  e => pointerMove(e.clientX, e.clientY));
 
-// Клавиатура (для десктопа)
 const keys = {};
 window.addEventListener('keydown', e => keys[e.code] = true);
 window.addEventListener('keyup',   e => keys[e.code] = false);
@@ -132,7 +172,7 @@ function updateHUD() {
     livesEl.textContent = '❤'.repeat(Math.max(0, game.hero?.lives ?? 0)) || '—';
 }
 
-// ─── Спавн врагов ──────────────────────────────────────────
+// ─── Враги ─────────────────────────────────────────────────
 function spawnEnemy() {
     const size = 50 + Math.random() * 18;
     const x = size + Math.random() * (W - size * 2);
@@ -143,21 +183,18 @@ function spawnEnemy() {
         size,
         vx: (Math.random() - 0.5) * 60,
         vy: speed,
-        hp,
-        maxHp: hp,
+        hp, maxHp: hp,
         shootTimer: 1200 + Math.random() * 2000,
         zigzag: Math.random() < 0.4,
         phase: Math.random() * Math.PI * 2,
     });
 }
 
-// ─── Стрельба героя ────────────────────────────────────────
 function heroShoot() {
     const h = game.hero;
     game.bullets.push({ x: h.x, y: h.y - h.size * 0.6, vy: -560, size: 10 });
 }
 
-// ─── Стрельба Трампа ───────────────────────────────────────
 function enemyShoot(e) {
     const dx = (game.hero.x - e.x);
     const dy = (game.hero.y - e.y);
@@ -171,7 +208,6 @@ function enemyShoot(e) {
     });
 }
 
-// ─── Партиклы (взрыв) ──────────────────────────────────────
 function explode(x, y, color = '#ffd84d', count = 14) {
     for (let i = 0; i < count; i++) {
         const a = Math.random() * Math.PI * 2;
@@ -188,9 +224,89 @@ function explode(x, y, color = '#ffd84d', count = 14) {
     }
 }
 
+// ─── БОСС ──────────────────────────────────────────────────
+function spawnBoss() {
+    const size = 130;
+    const hp = 30 + game.level * 8;
+    game.boss = {
+        x: W / 2,
+        y: -size,
+        targetY: 150,
+        size,
+        hp, maxHp: hp,
+        phase: 0,
+        patternTimer: 1500,
+        pattern: 0,
+        entering: true,
+    };
+}
+
+function bossShoot(b) {
+    const pattern = b.pattern % 3;
+    if (pattern === 0) {
+        // Прицельный веер из 3
+        const ang0 = Math.atan2(game.hero.y - b.y, game.hero.x - b.x);
+        for (let i = -1; i <= 1; i++) {
+            const a = ang0 + i * 0.2;
+            const sp = 240;
+            game.enemyBullets.push({
+                x: b.x, y: b.y + b.size * 0.3,
+                vx: Math.cos(a) * sp,
+                vy: Math.sin(a) * sp,
+                size: 10,
+            });
+        }
+        b.patternTimer = 700;
+    } else if (pattern === 1) {
+        // Круговой залп
+        const n = 12;
+        for (let i = 0; i < n; i++) {
+            const a = (i / n) * Math.PI * 2;
+            game.enemyBullets.push({
+                x: b.x, y: b.y,
+                vx: Math.cos(a) * 170,
+                vy: Math.sin(a) * 170,
+                size: 8,
+            });
+        }
+        b.patternTimer = 1100;
+    } else {
+        // Скоростной снайпер
+        const a = Math.atan2(game.hero.y - b.y, game.hero.x - b.x);
+        game.enemyBullets.push({
+            x: b.x, y: b.y + b.size * 0.3,
+            vx: Math.cos(a) * 380,
+            vy: Math.sin(a) * 380,
+            size: 12,
+        });
+        b.patternTimer = 600;
+    }
+    b.pattern++;
+}
+
+function updateBoss(dt) {
+    const b = game.boss;
+    if (!b) return;
+    b.phase += dt;
+
+    if (b.entering) {
+        b.y += 70 * dt;
+        if (b.y >= b.targetY) { b.y = b.targetY; b.entering = false; }
+    } else {
+        b.x = W/2 + Math.sin(b.phase * 0.7) * Math.min(W * 0.35, 220);
+        b.patternTimer -= dt * 1000;
+        if (b.patternTimer <= 0) bossShoot(b);
+    }
+
+    // Столкновение с героем
+    const h = game.hero;
+    if (h.invul <= 0 && Math.hypot(h.x - b.x, h.y - b.y) < (h.size + b.size) * 0.42) {
+        damageHero();
+    }
+}
+
 // ─── Обновление ────────────────────────────────────────────
 function update(dt) {
-    // Звёзды
     for (const s of game.stars) {
         s.y += s.s * dt;
         if (s.y > H) { s.y = 0; s.x = Math.random() * W; }
@@ -200,28 +316,34 @@ function update(dt) {
 
     const h = game.hero;
 
-    // Клавиатура
+    // Клавиатура (для десктопа)
     if (keys['ArrowLeft']  || keys['KeyA']) h.targetX -= 350 * dt;
     if (keys['ArrowRight'] || keys['KeyD']) h.targetX += 350 * dt;
+    if (keys['ArrowUp']    || keys['KeyW']) h.targetY -= 350 * dt;
+    if (keys['ArrowDown']  || keys['KeyS']) h.targetY += 350 * dt;
     h.targetX = Math.max(30, Math.min(W - 30, h.targetX));
+    h.targetY = Math.max(110, Math.min(H - 40, h.targetY));
 
-    // Плавное движение к цели
+    // Плавное движение к цели (2D)
     h.x += (h.targetX - h.x) * Math.min(1, dt * 12);
+    h.y += (h.targetY - h.y) * Math.min(1, dt * 12);
     if (h.invul > 0) h.invul -= dt;
 
     // Авто-стрельба
     h.cooldown -= dt * 1000;
-    if (h.cooldown <= 0) {
-        heroShoot();
-        h.cooldown = h.cooldownMax;
+    if (h.cooldown <= 0) { heroShoot(); h.cooldown = h.cooldownMax; }
+
+    // Спавн рядовых (приостанавливаем, пока есть босс)
+    if (!game.boss) {
+        game.spawnTimer -= dt * 1000;
+        if (game.spawnTimer <= 0) {
+            spawnEnemy();
+            game.spawnTimer = game.spawnInterval;
+        }
     }
 
-    // Спавн врагов
-    game.spawnTimer -= dt * 1000;
-    if (game.spawnTimer <= 0) {
-        spawnEnemy();
-        game.spawnTimer = game.spawnInterval;
-    }
+    // Босс
+    updateBoss(dt);
 
     // Пули героя
     for (let i = game.bullets.length - 1; i >= 0; i--) {
@@ -246,7 +368,6 @@ function update(dt) {
             e.shootTimer = 1400 + Math.random() * 1600;
         }
 
-        // Столкновение с героем
         if (h.invul <= 0 && Math.hypot(h.x - e.x, h.y - e.y) < (h.size + e.size) * 0.45) {
             damageHero();
             explode(e.x, e.y, '#ff6644', 20);
@@ -254,9 +375,7 @@ function update(dt) {
             continue;
         }
 
-        if (e.y > H + e.size) {
-            game.enemies.splice(i, 1);
-        }
+        if (e.y > H + e.size) game.enemies.splice(i, 1);
     }
 
     // Пули врагов
@@ -274,9 +393,32 @@ function update(dt) {
         }
     }
 
-    // Столкновения пуль героя с врагами
+    // Попадания пуль героя
     for (let i = game.bullets.length - 1; i >= 0; i--) {
         const b = game.bullets[i];
+        let hit = false;
+
+        // Сначала по боссу
+        if (game.boss && !game.boss.entering) {
+            const B = game.boss;
+            if (Math.hypot(b.x - B.x, b.y - B.y) < B.size * 0.42 + b.size) {
+                B.hp--;
+                game.bullets.splice(i, 1);
+                explode(b.x, b.y, '#ffd84d', 3);
+                if (B.hp <= 0) {
+                    explode(B.x, B.y, '#ff9a1e', 50);
+                    explode(B.x, B.y, '#ffd84d', 30);
+                    game.score += 2500 * game.level;
+                    game.boss = null;
+                    if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+                    updateHUD();
+                }
+                hit = true;
+            }
+        }
+        if (hit) continue;
+
+        // По рядовым
         for (let j = game.enemies.length - 1; j >= 0; j--) {
             const e = game.enemies[j];
             if (Math.hypot(b.x - e.x, b.y - e.y) < e.size * 0.5 + b.size) {
@@ -292,6 +434,7 @@ function update(dt) {
                         game.level++;
                         game.levelKills = 0;
                         game.spawnInterval = Math.max(380, game.spawnInterval - 90);
+                        if (game.level % 3 === 0 && !game.boss) spawnBoss();
                     }
                     updateHUD();
                 }
@@ -336,19 +479,19 @@ function drawStars() {
 function drawHero() {
     const h = game.hero;
     if (!h) return;
-
-    // Мигание при неуязвимости
     if (h.invul > 0 && Math.floor(h.invul * 12) % 2 === 0) return;
 
-    // Зелёное свечение-щит
+    const c = CHARACTERS[selectedChar];
+
+    // Свечение-щит
     const glow = ctx.createRadialGradient(h.x, h.y, 4, h.x, h.y, h.size);
-    glow.addColorStop(0, 'rgba(120, 255, 120, 0.45)');
+    glow.addColorStop(0, c.glowColor);
     glow.addColorStop(1, 'rgba(120, 255, 120, 0)');
     ctx.fillStyle = glow;
     ctx.fillRect(h.x - h.size, h.y - h.size, h.size * 2, h.size * 2);
 
-    // Корпус корабля
-    ctx.fillStyle = '#4cd964';
+    // Корпус
+    ctx.fillStyle = c.shipColor;
     ctx.beginPath();
     ctx.moveTo(h.x - h.size * 0.55, h.y + h.size * 0.35);
     ctx.lineTo(h.x + h.size * 0.55, h.y + h.size * 0.35);
@@ -368,30 +511,42 @@ function drawHero() {
     ctx.closePath();
     ctx.fill();
 
-    // Хомяк-пилот (зелёный через CSS-фильтр)
+    // Пилот-эмодзи
     ctx.save();
     ctx.font = `${h.size}px serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.filter = 'hue-rotate(90deg) saturate(1.6) drop-shadow(0 2px 6px rgba(0,0,0,0.6))';
-    ctx.fillText('🐹', h.x, h.y - h.size * 0.05);
+    ctx.filter = c.filter;
+    ctx.fillText(c.emoji, h.x, h.y - h.size * 0.05);
     ctx.restore();
 }
 
 function drawBullet(b) {
-    // Семечка
-    ctx.fillStyle = '#ffd84d';
-    ctx.beginPath();
-    ctx.ellipse(b.x, b.y, b.size * 0.55, b.size, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#8a5a2b';
-    ctx.beginPath();
-    ctx.ellipse(b.x, b.y, b.size * 0.25, b.size * 0.55, 0, 0, Math.PI * 2);
-    ctx.fill();
+    const c = CHARACTERS[selectedChar];
+    if (c.bullet === 'tongue') {
+        // Жабий язык — розовый снаряд
+        ctx.fillStyle = '#ff66aa';
+        ctx.beginPath();
+        ctx.ellipse(b.x, b.y, b.size * 0.5, b.size, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(b.x, b.y - b.size * 0.4, b.size * 0.25, 0, Math.PI * 2);
+        ctx.fill();
+    } else {
+        // Семечка
+        ctx.fillStyle = '#ffd84d';
+        ctx.beginPath();
+        ctx.ellipse(b.x, b.y, b.size * 0.55, b.size, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#8a5a2b';
+        ctx.beginPath();
+        ctx.ellipse(b.x, b.y, b.size * 0.25, b.size * 0.55, 0, 0, Math.PI * 2);
+        ctx.fill();
+    }
 }
 
 function drawEnemyBullet(b) {
-    // Красный «твит»
     ctx.fillStyle = '#ff3b3b';
     ctx.beginPath();
     ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
@@ -402,10 +557,8 @@ function drawEnemyBullet(b) {
     ctx.fill();
 }
 
-function drawTrump(e) {
-    const x = e.x, y = e.y, s = e.size;
-
-    // Тёмно-синий пиджак
+function drawTrumpFace(x, y, s, withHair = true, withCap = false) {
+    // Пиджак
     ctx.fillStyle = '#1a2342';
     ctx.beginPath();
     ctx.moveTo(x - s * 0.5, y + s * 0.15);
@@ -415,7 +568,7 @@ function drawTrump(e) {
     ctx.closePath();
     ctx.fill();
 
-    // Красный галстук
+    // Галстук
     ctx.fillStyle = '#d32f2f';
     ctx.beginPath();
     ctx.moveTo(x - s * 0.09, y + s * 0.15);
@@ -426,21 +579,48 @@ function drawTrump(e) {
     ctx.closePath();
     ctx.fill();
 
-    // Лицо (оранжевый загар)
+    // Лицо
     ctx.fillStyle = '#f4a460';
     ctx.beginPath();
     ctx.arc(x, y - s * 0.05, s * 0.36, 0, Math.PI * 2);
     ctx.fill();
 
-    // Волосы (жёлтая «причёска»)
-    ctx.fillStyle = '#f4d03f';
-    ctx.beginPath();
-    ctx.moveTo(x - s * 0.4, y - s * 0.18);
-    ctx.quadraticCurveTo(x - s * 0.55, y - s * 0.5, x - s * 0.05, y - s * 0.42);
-    ctx.quadraticCurveTo(x + s * 0.35, y - s * 0.55, x + s * 0.45, y - s * 0.2);
-    ctx.quadraticCurveTo(x + s * 0.18, y - s * 0.36, x - s * 0.2, y - s * 0.3);
-    ctx.closePath();
-    ctx.fill();
+    // Волосы
+    if (withHair) {
+        ctx.fillStyle = '#f4d03f';
+        ctx.beginPath();
+        ctx.moveTo(x - s * 0.4, y - s * 0.18);
+        ctx.quadraticCurveTo(x - s * 0.55, y - s * 0.5, x - s * 0.05, y - s * 0.42);
+        ctx.quadraticCurveTo(x + s * 0.35, y - s * 0.55, x + s * 0.45, y - s * 0.2);
+        ctx.quadraticCurveTo(x + s * 0.18, y - s * 0.36, x - s * 0.2, y - s * 0.3);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    // Красная кепка MAGA для босса
+    if (withCap) {
+        ctx.fillStyle = '#cc0000';
+        // козырёк
+        ctx.beginPath();
+        ctx.moveTo(x - s * 0.5, y - s * 0.15);
+        ctx.lineTo(x + s * 0.5, y - s * 0.15);
+        ctx.lineTo(x + s * 0.42, y - s * 0.08);
+        ctx.lineTo(x - s * 0.42, y - s * 0.08);
+        ctx.closePath();
+        ctx.fill();
+        // тулья
+        ctx.beginPath();
+        ctx.moveTo(x - s * 0.38, y - s * 0.15);
+        ctx.quadraticCurveTo(x, y - s * 0.55, x + s * 0.38, y - s * 0.15);
+        ctx.closePath();
+        ctx.fill();
+        // надпись MAGA
+        ctx.fillStyle = '#fff';
+        ctx.font = `bold ${s * 0.12}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('MAGA', x, y - s * 0.3);
+    }
 
     // Глаза
     ctx.fillStyle = '#000';
@@ -451,14 +631,46 @@ function drawTrump(e) {
     ctx.beginPath();
     ctx.arc(x, y + s * 0.08, s * 0.06, 0, Math.PI * 2);
     ctx.fill();
+}
 
-    // HP-бар для крепких Трампов
+function drawEnemy(e) {
+    drawTrumpFace(e.x, e.y, e.size, true, false);
     if (e.maxHp > 1) {
-        const w = s * 0.8;
+        const w = e.size * 0.8;
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(x - w/2, y - s * 0.55, w, 4);
+        ctx.fillRect(e.x - w/2, e.y - e.size * 0.55, w, 4);
         ctx.fillStyle = '#4cd964';
-        ctx.fillRect(x - w/2, y - s * 0.55, w * (e.hp / e.maxHp), 4);
+        ctx.fillRect(e.x - w/2, e.y - e.size * 0.55, w * (e.hp / e.maxHp), 4);
+    }
+}
+
+function drawBoss(b) {
+    // Аура
+    const glow = ctx.createRadialGradient(b.x, b.y, b.size * 0.4, b.x, b.y, b.size * 1.4);
+    glow.addColorStop(0, 'rgba(255, 60, 60, 0.45)');
+    glow.addColorStop(1, 'rgba(255, 60, 60, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(b.x - b.size * 1.4, b.y - b.size * 1.4, b.size * 2.8, b.size * 2.8);
+
+    drawTrumpFace(b.x, b.y, b.size, false, true);
+
+    // HP-полоса сверху экрана
+    if (!b.entering) {
+        const barW = Math.min(W * 0.7, 420);
+        const barH = 12;
+        const barX = (W - barW) / 2;
+        const barY = 64;
+        ctx.fillStyle = 'rgba(0,0,0,0.65)';
+        ctx.fillRect(barX, barY, barW, barH);
+        ctx.fillStyle = '#ff3b3b';
+        ctx.fillRect(barX, barY, barW * (b.hp / b.maxHp), barH);
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(barX, barY, barW, barH);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('БОСС: ТРАМП-ИМПЕРАТОР', W/2, barY - 6);
     }
 }
 
@@ -477,7 +689,8 @@ function drawParticles() {
 function render() {
     ctx.clearRect(0, 0, W, H);
     drawStars();
-    for (const e of game.enemies) drawTrump(e);
+    for (const e of game.enemies) drawEnemy(e);
+    if (game.boss) drawBoss(game.boss);
     for (const b of game.enemyBullets) drawEnemyBullet(b);
     for (const b of game.bullets) drawBullet(b);
     drawParticles();

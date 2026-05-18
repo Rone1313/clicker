@@ -35,7 +35,52 @@ body {
     padding: 40px 20px 30px;
     align-items: center;
     overflow-y: auto;
+    position: relative;
 }
+
+.hub-coins {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    background: rgba(255, 216, 77, 0.16);
+    border: 1px solid rgba(255, 216, 77, 0.5);
+    color: #ffd84d;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-weight: 800;
+    font-size: 14px;
+    box-shadow: 0 2px 8px rgba(255, 216, 77, 0.2);
+    z-index: 2;
+}
+
+.invite-btn {
+    margin-top: 18px;
+    background: linear-gradient(180deg, #4cd964 0%, #2a9d3a 100%);
+    color: #fff;
+    border: none;
+    padding: 14px 22px;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(76, 217, 100, 0.4);
+    width: 100%;
+    max-width: 420px;
+}
+.invite-btn:active { transform: translateY(2px); }
+
+.btn-share {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+.btn-share:active { background: rgba(255,255,255,0.2); }
 
 .hub-title {
     font-size: 34px;

@@ -11,6 +11,7 @@
 
 <!-- ═══ ХАБ ═══ -->
 <div class="screen hub" id="hubScreen">
+    <div class="hub-coins" id="hubCoins">🪙 <span id="coinAmount">0</span></div>
     <h1 class="hub-title">🐹 Хомяк-Аркада</h1>
     <p class="hub-sub">Выбери игру</p>
     <div class="game-list">
@@ -57,6 +58,17 @@
             </div>
         </button>
     </div>
+    <button class="invite-btn" id="inviteBtn">📤 Пригласить друга → +200 🪙</button>
+</div>
+
+<!-- ═══ ЕЖЕДНЕВНЫЙ БОНУС ═══ -->
+<div class="overlay hidden" id="dailyBonusModal">
+    <div style="font-size:80px;line-height:1;margin-bottom:12px">🎁</div>
+    <h1>Ежедневный бонус!</h1>
+    <p class="tagline">День <span id="dailyStreak">1</span> подряд из 7</p>
+    <p class="final-score">+<span id="dailyReward">50</span> 🪙</p>
+    <p class="tagline" id="dailyHint">Заходи каждый день — награды растут!</p>
+    <button class="btn-play" id="dailyClose">Забрать</button>
 </div>
 
 <!-- ═══ ДУРАК ═══ -->
@@ -102,6 +114,7 @@
         <h1 id="durakResult">Победа!</h1>
         <p class="tagline" id="durakResultMsg"></p>
         <button class="btn-play" id="durakRestartBtn">Ещё раз</button>
+        <button class="btn-share" id="durakShareBtn">📤 Похвастаться</button>
     </div>
 </div>
 
@@ -163,6 +176,7 @@
         <p class="final-score">Счёт: <span id="shFinal">0</span></p>
         <p class="tagline" id="shOverMsg">Трамп захватил галактику…</p>
         <button class="btn-play" id="shRestartBtn">ЕЩЁ РАЗ</button>
+        <button class="btn-share" id="shShareBtn">📤 Похвастаться</button>
     </div>
 </div>
 
@@ -182,6 +196,7 @@
         <h1 id="g2048Result">Игра окончена</h1>
         <p class="final-score">Счёт: <span id="g2048Final">0</span></p>
         <button class="btn-play" id="g2048RestartBtn">Заново</button>
+        <button class="btn-share" id="g2048ShareBtn">📤 Похвастаться</button>
     </div>
 </div>
 
@@ -199,6 +214,7 @@
         <h1>💀 Поражение</h1>
         <p class="final-score">Счёт: <span id="snakeFinal">0</span></p>
         <button class="btn-play" id="snakeRestartBtn">Ещё раз</button>
+        <button class="btn-share" id="snakeShareBtn">📤 Похвастаться</button>
     </div>
 </div>
 
@@ -221,6 +237,7 @@
         <h1>💥 Бах!</h1>
         <p class="final-score">Дистанция: <span id="runnerFinal">0</span></p>
         <button class="btn-play" id="runnerRestartBtn">Ещё раз</button>
+        <button class="btn-share" id="runnerShareBtn">📤 Похвастаться</button>
     </div>
 </div>
 

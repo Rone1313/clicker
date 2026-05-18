@@ -5,6 +5,107 @@
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 
+// ═══ КОНФИГ ═══════════════════════════════════════════════
+// Ссылка на бота для шеринга и рефералов. Замени на свою!
+// Формат: https://t.me/<bot_username>/<app_short_name>
+const BOT_LINK = 'https://t.me/HamsterArcadeBot/play';
+
+// ─── Кошелёк, ежедневный бонус, рефералка ──────────────────
+const Wallet = (function() {
+    const K_COINS  = 'coins';
+    const K_LAST   = 'lastDaily';
+    const K_STREAK = 'dailyStreak';
+    const K_REF    = 'refBonusGiven';
+
+    function get()      { return parseInt(localStorage.getItem(K_COINS) || '0', 10); }
+    function set(n)     { localStorage.setItem(K_COINS, String(Math.max(0, n))); refreshCoinDisplay(); }
+    function add(n)     { set(get() + n); }
+    function spend(n)   { if (get() < n) return false; set(get() - n); return true; }
+
+    function ymd(d)     { return d.toISOString().slice(0, 10); }
+    function today()    { return ymd(new Date()); }
+    function yesterday(){ const d = new Date(); d.setDate(d.getDate() - 1); return ymd(d); }
+
+    function checkDaily() {
+        const t = today();
+        const last = localStorage.getItem(K_LAST);
+        if (last === t) return null;
+        let streak = parseInt(localStorage.getItem(K_STREAK) || '0', 10);
+        streak = (last === yesterday()) ? streak + 1 : 1;
+        if (streak > 7) streak = 1;
+        const reward = streak * 50;
+        add(reward);
+        localStorage.setItem(K_LAST, t);
+        localStorage.setItem(K_STREAK, String(streak));
+        return { reward, streak };
+    }
+
+    function checkRefBonus() {
+        const sp = tg?.initDataUnsafe?.start_param;
+        if (!sp || !sp.startsWith('ref_')) return null;
+        if (localStorage.getItem(K_REF)) return null;
+        const refId = sp.slice(4);
+        const myId = String(tg?.initDataUnsafe?.user?.id || '');
+        if (myId && refId === myId) return null;     // не сам себя
+        localStorage.setItem(K_REF, '1');
+        localStorage.setItem('refFrom', refId);
+        add(200);
+        return 200;
+    }
+
+    return { get, set, add, spend, checkDaily, checkRefBonus };
+})();
+
+function refreshCoinDisplay() {
+    const el = document.getElementById('coinAmount');
+    if (el) el.textContent = Wallet.get();
+}
+
+// ─── Шеринг ───────────────────────────────────────────────
+function getRefLink() {
+    const uid = tg?.initDataUnsafe?.user?.id;
+    return uid ? `${BOT_LINK}?startapp=ref_${uid}` : BOT_LINK;
+}
+
+function share(text) {
+    const link = getRefLink();
+    const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
+    if (tg?.openTelegramLink)      tg.openTelegramLink(url);
+    else if (navigator.share)       navigator.share({ text: text + '\n' + link }).catch(() => {});
+    else                            window.open(url, '_blank');
+}
+
+// Ежедневный бонус — показ модалки
+function showDailyBonus() {
+    const result = Wallet.checkDaily();
+    if (!result) return;
+    document.getElementById('dailyStreak').textContent = result.streak;
+    document.getElementById('dailyReward').textContent = result.reward;
+    const hint = document.getElementById('dailyHint');
+    if (result.streak >= 7) hint.textContent = '🔥 Максимальная серия! Завтра — начнём заново.';
+    else hint.textContent = `Завтра: +${(result.streak + 1) * 50} 🪙`;
+    document.getElementById('dailyBonusModal').classList.remove('hidden');
+}
+document.getElementById('dailyClose').addEventListener('click', () => {
+    document.getElementById('dailyBonusModal').classList.add('hidden');
+});
+
+// Кнопка «Пригласить»
+document.getElementById('inviteBtn').addEventListener('click', () => {
+    share('🐹 Хомяк-Аркада: 5 игр про хомяка против Трампа и Путина! Залетай:');
+});
+
+// Кнопки «Похвастаться» в каждой игре
+function wireShare(btnId, getText) {
+    const btn = document.getElementById(btnId);
+    if (btn) btn.addEventListener('click', () => share(getText()));
+}
+wireShare('shShareBtn',    () => `🚀 Набил ${document.getElementById('shFinal').textContent} в Космическом бою против Трампов! Побьёшь?`);
+wireShare('g2048ShareBtn', () => `🔢 ${document.getElementById('g2048Final').textContent} очков в 2048!`);
+wireShare('snakeShareBtn', () => `🐍 ${document.getElementById('snakeFinal').textContent} очков в Змейке-хомяке!`);
+wireShare('runnerShareBtn',() => `🏃 Пробежал ${document.getElementById('runnerFinal').textContent} м в Хомяк-Раннере!`);
+wireShare('durakShareBtn', () => `🃏 Разгромил ботов в Дураке!`);
+
 // ─── Рекорды (личные, в localStorage) ──────────────────────
 const Records = (function() {
     function load() {
@@ -1752,3 +1853,22 @@ games.records = (function() {
 
 // ─── Старт на хабе ─────────────────────────────────────────
 showScreen('hub');
+
+// Виральные крючки: реф-бонус + ежедневный бонус
+const refBonus = Wallet.checkRefBonus();
+refreshCoinDisplay();
+if (refBonus) {
+    // Сначала показываем модалку про реф-бонус, потом дневной
+    const m = document.getElementById('dailyBonusModal');
+    document.getElementById('dailyStreak').textContent = '🎉';
+    document.getElementById('dailyReward').textContent = refBonus;
+    document.getElementById('dailyHint').textContent = 'Бонус за переход по ссылке друга!';
+    document.querySelector('#dailyBonusModal h1').textContent = 'Добро пожаловать!';
+    m.classList.remove('hidden');
+    document.getElementById('dailyClose').addEventListener('click', () => {
+        document.querySelector('#dailyBonusModal h1').textContent = 'Ежедневный бонус!';
+        setTimeout(showDailyBonus, 400);
+    }, { once: true });
+} else {
+    showDailyBonus();
+}

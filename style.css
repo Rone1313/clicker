@@ -17,50 +17,172 @@ html, body {
     touch-action: none;
 }
 
-.game-wrap {
-    position: fixed;
-    inset: 0;
+body {
     background: radial-gradient(ellipse at center, #0a0a2e 0%, #000 80%);
 }
 
-#gameCanvas {
-    display: block;
+.screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.screen.hidden { display: none; }
+
+/* ═══ ХАБ ═══════════════════════════════════════ */
+.hub {
+    padding: 40px 20px 30px;
+    align-items: center;
+    overflow-y: auto;
+}
+
+.hub-title {
+    font-size: 34px;
+    text-align: center;
+    text-shadow: 0 0 24px rgba(255, 216, 77, 0.6);
+}
+
+.hub-sub {
+    font-size: 16px;
+    color: #9ad5ff;
+    margin: 6px 0 28px;
+    text-align: center;
+}
+
+.game-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+    max-width: 420px;
+}
+
+.game-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 18px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 18px;
+    cursor: pointer;
+    color: #fff;
+    font: inherit;
+    text-align: left;
+    transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+
+.game-card:active {
+    transform: scale(0.97);
+    border-color: #ffd84d;
+    box-shadow: 0 6px 24px rgba(255, 216, 77, 0.3);
+}
+
+.card-emoji {
+    font-size: 48px;
+    line-height: 1;
+    flex-shrink: 0;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+}
+
+.card-info {
+    flex: 1;
+}
+
+.card-title {
+    font-size: 19px;
+    font-weight: 800;
+    margin-bottom: 3px;
+}
+
+.card-desc {
+    font-size: 13px;
+    color: #aab;
+    line-height: 1.3;
+}
+
+/* ═══ Общая шапка игр ═══════════════════════════ */
+.game-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: rgba(0,0,0,0.4);
+    z-index: 5;
+}
+
+.game-title {
+    font-size: 18px;
+    font-weight: 800;
+    flex: 1;
+    text-align: center;
+}
+
+.game-score {
+    font-size: 15px;
+    font-weight: 700;
+    color: #ffd84d;
+    min-width: 90px;
+    text-align: right;
+}
+
+.btn-back {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    font-size: 22px;
+    font-weight: 800;
+    cursor: pointer;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.btn-back:active { background: rgba(255,255,255,0.2); }
+
+/* ═══ ШУТЕР ═══════════════════════════════════ */
+#shooterCanvas, #runnerCanvas {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
+    display: block;
     touch-action: none;
 }
 
-/* HUD ────────────────────────────────────────── */
-.hud {
+.hud-game {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
-    padding: 14px 18px;
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    pointer-events: none;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
     z-index: 5;
-    font-weight: 700;
+    pointer-events: none;
+}
+
+.hud-game .btn-back { pointer-events: auto; }
+
+.hud-mid {
+    flex: 1;
+    text-align: center;
     text-shadow: 0 2px 6px rgba(0,0,0,0.8);
 }
 
-.hud-left {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
+.score { font-size: 20px; font-weight: 800; color: #ffd84d; }
+.level { font-size: 13px; color: #9ad5ff; opacity: 0.85; }
+.lives { font-size: 22px; letter-spacing: 2px; text-shadow: 0 2px 6px rgba(0,0,0,0.8); }
 
-.score { font-size: 22px; color: #ffd84d; }
-.level { font-size: 14px; color: #9ad5ff; opacity: 0.85; }
-.lives { font-size: 22px; letter-spacing: 2px; }
-
-/* Оверлеи ─────────────────────────────────────── */
+/* ═══ Оверлеи ═══════════════════════════════════ */
 .overlay {
     position: absolute;
     inset: 0;
-    background: rgba(5, 5, 25, 0.88);
+    background: rgba(5, 5, 25, 0.92);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     display: flex;
@@ -70,6 +192,7 @@ html, body {
     text-align: center;
     padding: 24px;
     z-index: 10;
+    overflow-y: auto;
     transition: opacity 0.25s ease;
 }
 
@@ -79,55 +202,86 @@ html, body {
 }
 
 .overlay h1 {
-    font-size: 44px;
+    font-size: 38px;
     margin-bottom: 4px;
     text-shadow: 0 0 24px rgba(255, 216, 77, 0.6);
 }
 
 .overlay h2 {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 500;
     color: #9ad5ff;
-    margin-bottom: 22px;
-    letter-spacing: 2px;
+    margin-bottom: 18px;
+    letter-spacing: 1.5px;
 }
 
 .tagline {
-    font-size: 16px;
+    font-size: 15px;
     color: #d5d5e8;
     margin-bottom: 18px;
     max-width: 340px;
-    line-height: 1.4;
+    line-height: 1.5;
 }
 
 .howto {
     list-style: none;
     text-align: left;
-    margin-bottom: 28px;
+    margin-bottom: 24px;
     color: #c8c8e0;
-    font-size: 15px;
+    font-size: 14px;
     line-height: 2;
 }
 
 .final-score {
-    font-size: 28px;
+    font-size: 26px;
     color: #ffd84d;
     margin-bottom: 18px;
     font-weight: 700;
 }
 
-/* Выбор персонажа ─────────────────────────────── */
+.btn-play {
+    background: linear-gradient(180deg, #ffd84d 0%, #ff9a1e 100%);
+    color: #1a1a2e;
+    font-size: 20px;
+    font-weight: 800;
+    padding: 14px 44px;
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(255, 154, 30, 0.5),
+                inset 0 -4px 0 rgba(0,0,0,0.15),
+                inset 0 2px 0 rgba(255,255,255,0.4);
+    transition: transform 0.1s;
+    letter-spacing: 1px;
+}
+
+.btn-play:active { transform: translateY(3px); }
+
+.btn-restart {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    padding: 10px 22px;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 14px;
+}
+
+.btn-restart:active { background: rgba(255,255,255,0.2); }
+
+/* ═══ Выбор персонажа (шутер) ═══════════════════ */
 .char-pick {
     display: flex;
     gap: 14px;
-    margin-bottom: 24px;
+    margin-bottom: 22px;
 }
 
 .char-card {
     background: rgba(255,255,255,0.05);
     border: 2px solid rgba(255,255,255,0.12);
     border-radius: 18px;
-    padding: 14px 18px;
+    padding: 12px 16px;
     cursor: pointer;
     transition: transform 0.15s, border-color 0.15s, background 0.15s, box-shadow 0.15s;
     text-align: center;
@@ -142,46 +296,113 @@ html, body {
 }
 
 .char-emoji {
-    font-size: 60px;
+    font-size: 56px;
     line-height: 1;
-    margin-bottom: 6px;
-}
-
-.char-hamster {
-    filter: hue-rotate(90deg) saturate(1.6);
-}
-
-.char-name {
-    font-size: 18px;
-    font-weight: 800;
-    color: #fff;
     margin-bottom: 4px;
 }
 
+.char-hamster { filter: hue-rotate(90deg) saturate(1.6); }
+
+.char-name { font-size: 17px; font-weight: 800; }
+
 .char-stat {
-    font-size: 12px;
+    font-size: 11px;
     color: #aab;
     line-height: 1.4;
+    margin-top: 2px;
 }
 
-.btn-play {
-    background: linear-gradient(180deg, #ffd84d 0%, #ff9a1e 100%);
+/* ═══ 2048 ═══════════════════════════════════════ */
+.g2048-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    gap: 12px;
+    touch-action: none;
+}
+
+.g2048-board {
+    position: relative;
+    width: min(92vw, 380px);
+    aspect-ratio: 1;
+    background: #2a2a55;
+    border-radius: 14px;
+    padding: 8px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+    gap: 8px;
+    touch-action: none;
+}
+
+.g2048-cell {
+    background: rgba(255,255,255,0.06);
+    border-radius: 8px;
+}
+
+.g2048-tile {
+    position: absolute;
+    width: calc((100% - 16px - 24px) / 4);
+    aspect-ratio: 1;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 28px;
+    transition: transform 0.13s ease, background 0.13s, color 0.13s;
     color: #1a1a2e;
-    font-size: 22px;
-    font-weight: 800;
-    padding: 16px 48px;
-    border: none;
-    border-radius: 16px;
-    cursor: pointer;
-    box-shadow: 0 8px 24px rgba(255, 154, 30, 0.5),
-                inset 0 -4px 0 rgba(0,0,0,0.15),
-                inset 0 2px 0 rgba(255,255,255,0.4);
-    transition: transform 0.1s, box-shadow 0.1s;
-    letter-spacing: 1px;
 }
 
-.btn-play:active {
-    transform: translateY(3px);
-    box-shadow: 0 4px 12px rgba(255, 154, 30, 0.5),
-                inset 0 -2px 0 rgba(0,0,0,0.15);
+.g2048-tile[data-v="2"]    { background: #f4f1e8; }
+.g2048-tile[data-v="4"]    { background: #f0e4c4; }
+.g2048-tile[data-v="8"]    { background: #ffb877; color: #fff; }
+.g2048-tile[data-v="16"]   { background: #ff9558; color: #fff; }
+.g2048-tile[data-v="32"]   { background: #ff7755; color: #fff; }
+.g2048-tile[data-v="64"]   { background: #ff5533; color: #fff; }
+.g2048-tile[data-v="128"]  { background: #ffd84d; font-size: 26px; }
+.g2048-tile[data-v="256"]  { background: #ffce3a; font-size: 26px; }
+.g2048-tile[data-v="512"]  { background: #ffc527; font-size: 26px; }
+.g2048-tile[data-v="1024"] { background: #ff9a1e; color: #fff; font-size: 22px; }
+.g2048-tile[data-v="2048"] { background: linear-gradient(135deg, #ff6b35, #ffd84d); color: #fff; font-size: 22px; box-shadow: 0 0 24px rgba(255,216,77,0.7); }
+.g2048-tile[data-v="4096"] { background: #6b46c1; color: #fff; font-size: 20px; }
+
+.g2048-hint {
+    font-size: 13px;
+    color: #aab;
+    text-align: center;
+}
+
+/* ═══ ЗМЕЙКА ═════════════════════════════════════ */
+.snake-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+}
+
+#snakeCanvas {
+    background: #0a1828;
+    border-radius: 12px;
+    width: min(92vw, 92vh, 420px);
+    aspect-ratio: 1;
+    height: auto;
+    touch-action: none;
+    box-shadow: 0 0 32px rgba(74,205,100,0.18);
+}
+
+.snake-hint {
+    font-size: 13px;
+    color: #aab;
+    text-align: center;
+    padding-bottom: 14px;
+}
+
+/* ═══ РАННЕР ═════════════════════════════════════ */
+#runnerCanvas {
+    background: linear-gradient(180deg, #1a2342 0%, #2a3868 60%, #4a6e3a 100%);
 }

@@ -1215,31 +1215,44 @@ games.runner = (function() {
 })();
 
 // ═══════════════════════════════════════════════════════════
-//  МОДУЛЬ 5 — ДУРАК
+//  МОДУЛЬ 5 — ДУРАК (2-6 игроков, ты + 1-5 ботов)
 // ═══════════════════════════════════════════════════════════
 games.durak = (function() {
-    const aiHandEl   = document.getElementById('durakAiHand');
-    const aiCountEl  = document.getElementById('durakAiCount');
+    const opponentsEl = document.getElementById('durakOpponents');
     const deckPileEl = document.getElementById('durakDeckPile');
-    const deckCountEl= document.getElementById('durakDeckCount');
-    const trumpSlotEl= document.getElementById('durakTrumpSlot');
-    const tableEl    = document.getElementById('durakTable');
-    const handEl     = document.getElementById('durakHand');
-    const actionsEl  = document.getElementById('durakActions');
-    const statusEl   = document.getElementById('durakStatus');
-    const overEl     = document.getElementById('durakOverScreen');
-    const resultEl   = document.getElementById('durakResult');
-    const resultMsgEl= document.getElementById('durakResultMsg');
-    const restartBtn = document.getElementById('durakRestartBtn');
+    const deckCountEl = document.getElementById('durakDeckCount');
+    const trumpSlotEl = document.getElementById('durakTrumpSlot');
+    const tableEl     = document.getElementById('durakTable');
+    const handEl      = document.getElementById('durakHand');
+    const actionsEl   = document.getElementById('durakActions');
+    const statusEl    = document.getElementById('durakStatus');
+    const configEl    = document.getElementById('durakConfigScreen');
+    const overEl      = document.getElementById('durakOverScreen');
+    const resultEl    = document.getElementById('durakResult');
+    const resultMsgEl = document.getElementById('durakResultMsg');
+    const restartBtn  = document.getElementById('durakRestartBtn');
+    const startBtn    = document.getElementById('durakStartBtn');
+    const playersPick = document.getElementById('durakPlayersPick');
+    const botsCountEl = document.getElementById('durakBotsCount');
 
     const SUITS = ['♠','♥','♦','♣'];
-    const RANKS = ['6','7','8','9','10','В','Д','К','Т'];
-    const VAL = { '6':6,'7':7,'8':8,'9':9,'10':10,'В':11,'Д':12,'К':13,'Т':14 };
+    const RANKS_36 = ['6','7','8','9','10','В','Д','К','Т'];
+    const RANKS_52 = ['2','3','4','5','6','7','8','9','10','В','Д','К','Т'];
+    const VAL = { '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'В':11,'Д':12,'К':13,'Т':14 };
     const RED = new Set(['♥','♦']);
+    const BOTS = [
+        { name:'Хомяк',  avatar:'🐹' },
+        { name:'Жаба',   avatar:'🐸' },
+        { name:'Кот',    avatar:'🐱' },
+        { name:'Лис',    avatar:'🦊' },
+        { name:'Барсук', avatar:'🦡' },
+    ];
 
     let state = null;
     let active = false;
     let timeoutId = null;
+    let selectedCount = parseInt(localStorage.getItem('durakPlayers') || '2', 10);
+    if (selectedCount < 2 || selectedCount > 6) selectedCount = 2;
 
     function shuffle(a) {
         for (let i = a.length - 1; i > 0; i--) {
@@ -1247,9 +1260,10 @@ games.durak = (function() {
             [a[i], a[j]] = [a[j], a[i]];
         }
     }
-    function freshDeck() {
+    function freshDeck(playerCount) {
+        const ranks = playerCount >= 5 ? RANKS_52 : RANKS_36;
         const d = [];
-        for (const s of SUITS) for (const r of RANKS) d.push({ suit:s, rank:r });
+        for (const s of SUITS) for (const r of ranks) d.push({ suit:s, rank:r });
         return d;
     }
     function canBeat(att, def, trump) {
@@ -1263,208 +1277,244 @@ games.durak = (function() {
         for (const p of state.table) { r.add(p.att.rank); if (p.def) r.add(p.def.rank); }
         return r;
     }
-
-    function newGame() {
-        const deck = freshDeck();
-        shuffle(deck);
-        const trumpCard = deck[deck.length - 1];   // нижняя карта — козырь
-        const trump = trumpCard.suit;
-        const player = deck.splice(0, 6);
-        const ai = deck.splice(0, 6);
-        const lowTrump = h => {
-            const ts = h.filter(c => c.suit === trump).map(c => VAL[c.rank]).sort((a,b) => a-b);
-            return ts[0] ?? 999;
-        };
-        const attacker = lowTrump(player) <= lowTrump(ai) ? 'player' : 'ai';
-        state = { deck, trump, trumpCard, player, ai, table:[], attacker, phase:'attack', turn:attacker, loser:null };
-        overEl.classList.add('hidden');
-        render();
-        if (state.turn === 'ai') schedule(aiAction, 700);
+    function nextActiveIdx(fromIdx) {
+        const n = state.players.length;
+        for (let i = 1; i <= n; i++) {
+            const idx = (fromIdx + i) % n;
+            if (!state.players[idx].eliminated) return idx;
+        }
+        return -1;
     }
 
-    function refill() {
-        const order = state.attacker === 'player' ? ['player','ai'] : ['ai','player'];
-        for (const who of order) {
-            while (state[who].length < 6 && state.deck.length > 0) {
-                state[who].push(state.deck.shift());
+    function newGame(count) {
+        selectedCount = count;
+        localStorage.setItem('durakPlayers', String(count));
+        const deck = freshDeck(count);
+        shuffle(deck);
+        const trumpCard = deck[deck.length - 1];
+        const trump = trumpCard.suit;
+
+        const players = [];
+        players.push({ id:0, name:'Ты', avatar:'🧑', isHuman:true, hand:[], eliminated:false });
+        for (let i = 0; i < count - 1; i++) {
+            const b = BOTS[i];
+            players.push({ id:i+1, name:b.name, avatar:b.avatar, isHuman:false, hand:[], eliminated:false });
+        }
+        // Раздаём по 6 карт по кругу
+        for (let i = 0; i < 6; i++) {
+            for (const p of players) {
+                if (deck.length > 0) p.hand.push(deck.shift());
             }
         }
+        // Первый атакующий = младший козырь
+        let attackerIdx = 0, lowestVal = 999;
+        for (let i = 0; i < players.length; i++) {
+            const trumps = players[i].hand.filter(c => c.suit === trump);
+            if (!trumps.length) continue;
+            const m = Math.min(...trumps.map(c => VAL[c.rank]));
+            if (m < lowestVal) { lowestVal = m; attackerIdx = i; }
+        }
+        const defenderIdx = (attackerIdx + 1) % players.length;
+
+        state = {
+            players, deck, trump, trumpCard,
+            table: [],
+            attackerIdx, defenderIdx,
+            phase: 'play', turnIdx: attackerIdx,
+            passes: new Set(),
+            loser: null,
+        };
+        configEl.classList.add('hidden');
+        overEl.classList.add('hidden');
+        render();
+        if (!players[attackerIdx].isHuman) schedule(aiAct, 700);
     }
 
-    function checkOver() {
-        if (state.deck.length > 0) return false;
-        const pe = state.player.length === 0;
-        const ae = state.ai.length === 0;
-        if (!pe && !ae) return false;
-        if (pe && ae) state.loser = 'draw';
-        else if (pe) state.loser = 'ai';
-        else state.loser = 'player';
-        state.phase = 'over';
-        endGame();
-        return true;
+    function canPlayAttack(playerIdx) {
+        if (playerIdx === state.defenderIdx) return false;
+        const p = state.players[playerIdx];
+        if (p.eliminated || p.hand.length === 0) return false;
+        if (state.table.length === 0) return playerIdx === state.attackerIdx;
+        if (state.table.length >= 6) return false;
+        const undef = state.table.filter(t => !t.def).length;
+        const defLeft = state.players[state.defenderIdx].hand.length;
+        if (undef >= defLeft) return false;
+        const ranks = tableRanks();
+        return p.hand.some(c => ranks.has(c.rank));
+    }
+
+    function nextPlayTurn() {
+        const n = state.players.length;
+        for (let step = 0; step < n; step++) {
+            const idx = (state.attackerIdx + step) % n;
+            if (idx === state.defenderIdx) continue;
+            if (state.players[idx].eliminated) continue;
+            if (state.passes.has(idx)) continue;
+            if (!canPlayAttack(idx)) { state.passes.add(idx); continue; }
+            state.turnIdx = idx;
+            render();
+            if (!state.players[idx].isHuman) schedule(aiAct, 700);
+            return;
+        }
+        finishRound(false);
+    }
+
+    function play(playerIdx, card) {
+        if (!canPlayAttack(playerIdx)) return;
+        const p = state.players[playerIdx];
+        const ci = p.hand.indexOf(card);
+        if (ci < 0) return;
+        p.hand.splice(ci, 1);
+        state.table.push({ att: card, def: null });
+        state.passes = new Set();
+        state.phase = 'defend';
+        state.turnIdx = state.defenderIdx;
+        render();
+        if (!state.players[state.defenderIdx].isHuman) schedule(aiAct, 700);
+    }
+
+    function pass(playerIdx) {
+        if (state.phase !== 'play') return;
+        if (state.turnIdx !== playerIdx) return;
+        state.passes.add(playerIdx);
+        nextPlayTurn();
+    }
+
+    function defend(playerIdx, card) {
+        if (state.phase !== 'defend') return;
+        if (playerIdx !== state.defenderIdx) return;
+        const target = state.table.find(t => !t.def);
+        if (!target) return;
+        if (!canBeat(target.att, card, state.trump)) return;
+        const hand = state.players[playerIdx].hand;
+        const ci = hand.indexOf(card);
+        if (ci < 0) return;
+        hand.splice(ci, 1);
+        target.def = card;
+        state.phase = 'play';
+        state.passes = new Set();
+        nextPlayTurn();
+    }
+
+    function take(playerIdx) {
+        if (state.phase !== 'defend') return;
+        if (playerIdx !== state.defenderIdx) return;
+        finishRound(true);
+    }
+
+    function finishRound(taken) {
+        if (taken) {
+            for (const t of state.table) {
+                state.players[state.defenderIdx].hand.push(t.att);
+                if (t.def) state.players[state.defenderIdx].hand.push(t.def);
+            }
+        }
+        state.table = [];
+
+        // Добор: атакующий первым, защитник последним
+        const refillOrder = [];
+        const n = state.players.length;
+        for (let i = 0; i < n; i++) {
+            const idx = (state.attackerIdx + i) % n;
+            if (idx === state.defenderIdx) continue;
+            if (!state.players[idx].eliminated) refillOrder.push(idx);
+        }
+        if (!state.players[state.defenderIdx].eliminated) refillOrder.push(state.defenderIdx);
+        for (const idx of refillOrder) {
+            while (state.players[idx].hand.length < 6 && state.deck.length > 0) {
+                state.players[idx].hand.push(state.deck.shift());
+            }
+        }
+
+        // Выходят те, у кого 0 карт и колода пуста
+        if (state.deck.length === 0) {
+            for (const p of state.players) {
+                if (!p.eliminated && p.hand.length === 0) p.eliminated = true;
+            }
+        }
+
+        const remaining = state.players.filter(p => !p.eliminated);
+        if (remaining.length <= 1) {
+            state.loser = remaining.length === 1 ? remaining[0].id : null;
+            state.phase = 'over';
+            endGame();
+            return;
+        }
+
+        // Назначаем атакующего и защитника
+        if (taken) {
+            const newAtt = nextActiveIdx(state.defenderIdx);
+            state.attackerIdx = newAtt;
+            state.defenderIdx = nextActiveIdx(newAtt);
+        } else {
+            let na = state.defenderIdx;
+            if (state.players[na].eliminated) na = nextActiveIdx(na);
+            state.attackerIdx = na;
+            state.defenderIdx = nextActiveIdx(na);
+        }
+
+        state.phase = 'play';
+        state.passes = new Set();
+        state.turnIdx = state.attackerIdx;
+        render();
+        if (!state.players[state.attackerIdx].isHuman) schedule(aiAct, 700);
     }
 
     function endGame() {
-        if (state.loser === 'draw') {
+        if (state.loser === 0) {
+            resultEl.textContent = '💀 Ты дурак';
+            resultMsgEl.textContent = 'Не повезло в этот раз.';
+        } else if (state.loser === null) {
             resultEl.textContent = '🤝 Ничья';
-            resultMsgEl.textContent = 'Оба остались без карт.';
-        } else if (state.loser === 'ai') {
+            resultMsgEl.textContent = 'Все вышли одновременно.';
+        } else {
+            const loser = state.players.find(p => p.id === state.loser);
             resultEl.textContent = '🏆 ПОБЕДА!';
-            resultMsgEl.textContent = 'Бот — дурак!';
+            resultMsgEl.textContent = `Дурак — ${loser.avatar} ${loser.name}.`;
             const prev = Records.load().durak || 0;
             Records.update('durak', prev + 1);
-        } else {
-            resultEl.textContent = '💀 Ты дурак';
-            resultMsgEl.textContent = 'В следующий раз повезёт.';
         }
         overEl.classList.remove('hidden');
     }
 
-    // ─── Игрок ────────────────────────────
-    function playerAttack(idx) {
-        if (state.turn !== 'player' || state.phase !== 'attack') return;
-        const card = state.player[idx];
-        if (!card) return;
-        if (state.table.length > 0 && !tableRanks().has(card.rank)) return;
-        if (state.table.length >= 6) return;
-        const undef = state.table.filter(p => !p.def).length;
-        const defHand = state.attacker === 'player' ? state.ai : state.player;
-        if (undef >= defHand.length) return;
-        state.player.splice(idx, 1);
-        state.table.push({ att: card, def: null });
-        state.phase = 'defense';
-        state.turn = (state.attacker === 'player') ? 'ai' : 'player';
-        // Если игрок атаковал — защищается бот; если игрок «подкидывал» (а атаковал бот) — тоже бот защищается
-        if (state.attacker === 'player') {
-            // Player атакует — AI defends
-            render();
-            schedule(aiAction, 700);
-        } else {
-            // Player is "adding" but attacker is ai — actually этого не должно произойти в 1v1
-            render();
-        }
-    }
-
-    function playerEndAttack() {
-        if (state.turn !== 'player' || state.phase !== 'attack') return;
-        if (state.table.length === 0) return;
-        if (state.table.some(p => !p.def)) return;
-        state.table = [];
-        refill();
-        state.attacker = 'ai';
-        state.phase = 'attack';
-        state.turn = 'ai';
-        if (checkOver()) { render(); return; }
-        render();
-        schedule(aiAction, 700);
-    }
-
-    function playerDefend(idx) {
-        if (state.turn !== 'player' || state.phase !== 'defense') return;
-        const card = state.player[idx];
-        if (!card) return;
-        const target = state.table.find(p => !p.def);
-        if (!target) return;
-        if (!canBeat(target.att, card, state.trump)) return;
-        target.def = card;
-        state.player.splice(idx, 1);
-        state.phase = 'attack';
-        state.turn = 'ai';
-        render();
-        schedule(aiAction, 700);
-    }
-
-    function playerTake() {
-        if (state.turn !== 'player' || state.phase !== 'defense') return;
-        for (const p of state.table) {
-            state.player.push(p.att);
-            if (p.def) state.player.push(p.def);
-        }
-        state.table = [];
-        refill();
-        state.attacker = 'ai';
-        state.phase = 'attack';
-        state.turn = 'ai';
-        if (checkOver()) { render(); return; }
-        render();
-        schedule(aiAction, 700);
-    }
-
-    // ─── ИИ ──────────────────────────────
-    function aiAction() {
+    function aiAct() {
         if (!active || !state || state.phase === 'over') return;
-        if (state.turn !== 'ai') return;
-        if (state.phase === 'attack') aiAttack();
-        else if (state.phase === 'defense') aiDefend();
+        const idx = state.phase === 'defend' ? state.defenderIdx : state.turnIdx;
+        if (idx < 0) return;
+        const p = state.players[idx];
+        if (p.isHuman) return;
+        if (state.phase === 'play') aiPlay(idx);
+        else if (state.phase === 'defend') aiDefend(idx);
     }
 
-    function aiAttack() {
-        let card = null;
+    function aiPlay(idx) {
+        if (!canPlayAttack(idx)) { pass(idx); return; }
+        const p = state.players[idx];
+        let card;
         if (state.table.length === 0) {
-            const sorted = [...state.ai].sort((a,b) => weight(a, state.trump) - weight(b, state.trump));
+            const sorted = [...p.hand].sort((a,b) => weight(a, state.trump) - weight(b, state.trump));
             card = sorted[0];
         } else {
             const ranks = tableRanks();
-            const matching = state.ai.filter(c => ranks.has(c.rank));
-            if (matching.length) {
-                matching.sort((a,b) => weight(a, state.trump) - weight(b, state.trump));
-                card = matching[0];
-            }
+            const matching = p.hand.filter(c => ranks.has(c.rank));
+            if (!matching.length) { pass(idx); return; }
+            matching.sort((a,b) => weight(a, state.trump) - weight(b, state.trump));
+            card = matching[0];
         }
-        const undef = state.table.filter(p => !p.def).length;
-        const defHand = state.attacker === 'ai' ? state.player : state.ai;
-        if (!card || state.table.length >= 6 || undef >= defHand.length) {
-            // Завершить атаку: бито
-            state.table = [];
-            refill();
-            state.attacker = 'player';
-            state.phase = 'attack';
-            state.turn = 'player';
-            if (checkOver()) { render(); return; }
-            render();
-            return;
-        }
-        state.ai.splice(state.ai.indexOf(card), 1);
-        state.table.push({ att: card, def: null });
-        state.phase = 'defense';
-        state.turn = 'player';
-        render();
+        play(idx, card);
     }
 
-    function aiDefend() {
-        const target = state.table.find(p => !p.def);
-        if (!target) {
-            state.phase = 'attack';
-            state.turn = 'player';
-            render();
-            return;
-        }
-        const candidates = state.ai
+    function aiDefend(idx) {
+        const target = state.table.find(t => !t.def);
+        if (!target) return;
+        const p = state.players[idx];
+        const cand = p.hand
             .filter(c => canBeat(target.att, c, state.trump))
             .sort((a,b) => weight(a, state.trump) - weight(b, state.trump));
-        if (candidates.length === 0) {
-            for (const p of state.table) {
-                state.ai.push(p.att);
-                if (p.def) state.ai.push(p.def);
-            }
-            state.table = [];
-            refill();
-            state.attacker = 'player';
-            state.phase = 'attack';
-            state.turn = 'player';
-            if (checkOver()) { render(); return; }
-            render();
-            return;
-        }
-        const def = candidates[0];
-        target.def = def;
-        state.ai.splice(state.ai.indexOf(def), 1);
-        state.phase = 'attack';
-        state.turn = 'player';
-        render();
+        if (cand.length === 0) { take(idx); return; }
+        defend(idx, cand[0]);
     }
 
-    // ─── Рендер ───────────────────────────
     function makeCardEl(card) {
         const div = document.createElement('div');
         div.className = 'card';
@@ -1477,14 +1527,34 @@ games.durak = (function() {
     }
 
     function render() {
-        // Рука бота — рубашки
-        aiHandEl.innerHTML = '';
-        for (let i = 0; i < state.ai.length; i++) {
-            const m = document.createElement('div');
-            m.className = 'card-mini';
-            aiHandEl.appendChild(m);
+        // Оппоненты
+        opponentsEl.innerHTML = '';
+        for (let i = 1; i < state.players.length; i++) {
+            const p = state.players[i];
+            const block = document.createElement('div');
+            block.className = 'opp';
+            if (p.eliminated) block.classList.add('eliminated');
+            if (!p.eliminated && state.phase !== 'over') {
+                if (i === state.attackerIdx) block.classList.add('attacker');
+                if (i === state.defenderIdx) block.classList.add('defender');
+            }
+            const header = document.createElement('div');
+            header.className = 'opp-name';
+            header.textContent = `${p.avatar} ${p.name}`;
+            const cards = document.createElement('div');
+            cards.className = 'opp-cards';
+            const visible = Math.min(p.hand.length, 6);
+            for (let j = 0; j < visible; j++) {
+                const m = document.createElement('div');
+                m.className = 'card-mini';
+                cards.appendChild(m);
+            }
+            const cnt = document.createElement('div');
+            cnt.className = 'opp-count';
+            cnt.textContent = p.eliminated ? '✓ вышел' : `${p.hand.length} карт`;
+            block.append(header, cards, cnt);
+            opponentsEl.appendChild(block);
         }
-        aiCountEl.textContent = state.ai.length;
 
         // Колода + козырь
         trumpSlotEl.innerHTML = '';
@@ -1502,7 +1572,6 @@ games.durak = (function() {
         }
 
         // Стол
-        // Сохраняем подсказку
         const hint = tableEl.querySelector('.table-hint');
         tableEl.innerHTML = '';
         if (state.table.length === 0 && hint) tableEl.appendChild(hint);
@@ -1522,68 +1591,82 @@ games.durak = (function() {
 
         // Рука игрока
         handEl.innerHTML = '';
-        const checker = isPlayable();
-        state.player
-            .map((c, i) => ({ c, i }))
-            .sort((a, b) => weight(a.c, state.trump) - weight(b.c, state.trump))
-            .forEach(({ c, i }) => {
-                const el = makeCardEl(c);
-                if (checker(c)) {
-                    el.classList.add('playable');
-                    el.addEventListener('click', () => onCardClick(c));
-                }
-                handEl.appendChild(el);
-            });
+        const human = state.players[0];
+        const isPlayable = makePlayabilityChecker();
+        const sorted = [...human.hand].sort((a, b) => weight(a, state.trump) - weight(b, state.trump));
+        for (const c of sorted) {
+            const el = makeCardEl(c);
+            if (isPlayable(c)) {
+                el.classList.add('playable');
+                el.addEventListener('click', () => onHumanCardClick(c));
+            }
+            handEl.appendChild(el);
+        }
 
-        // Кнопки
+        // Кнопки действия
         actionsEl.innerHTML = '';
-        if (state.phase === 'attack' && state.turn === 'player' &&
-            state.table.length > 0 && state.table.every(p => p.def)) {
+        if (state.phase === 'play' && state.turnIdx === 0 && !human.eliminated) {
             const btn = document.createElement('button');
             btn.className = 'action-btn';
-            btn.textContent = 'Бито';
-            btn.addEventListener('click', playerEndAttack);
+            // Пас только если не главный атакующий с пустым столом
+            if (state.table.length === 0) {
+                btn.textContent = '— атакуй';
+                btn.disabled = true;
+            } else {
+                btn.textContent = 'Пас';
+                btn.addEventListener('click', () => pass(0));
+            }
             actionsEl.appendChild(btn);
         }
-        if (state.phase === 'defense' && state.turn === 'player') {
+        if (state.phase === 'defend' && state.defenderIdx === 0 && !human.eliminated) {
             const btn = document.createElement('button');
             btn.className = 'action-btn danger';
             btn.textContent = 'Беру';
-            btn.addEventListener('click', playerTake);
+            btn.addEventListener('click', () => take(0));
             actionsEl.appendChild(btn);
         }
 
         // Статус
-        if (state.phase === 'over') statusEl.textContent = '—';
-        else if (state.turn === 'player')
-            statusEl.textContent = state.phase === 'attack' ? 'Твой ход' : 'Защищайся';
-        else statusEl.textContent = 'Ход бота…';
+        let status = '—';
+        if (state.phase === 'over') status = '—';
+        else if (state.phase === 'play') {
+            const t = state.turnIdx;
+            if (t === 0) status = state.table.length === 0 ? 'Твой ход' : 'Можешь подкинуть';
+            else status = `Ход ${state.players[t].name}…`;
+        } else if (state.phase === 'defend') {
+            const d = state.defenderIdx;
+            if (d === 0) status = 'Защищайся';
+            else status = `${state.players[d].name} защищается…`;
+        }
+        statusEl.textContent = status;
     }
 
-    function isPlayable() {
-        const isAtt = state.phase === 'attack' && state.turn === 'player';
-        const isDef = state.phase === 'defense' && state.turn === 'player';
-        const ranks = tableRanks();
-        const target = state.table.find(p => !p.def);
-        const undef = state.table.filter(p => !p.def).length;
-        const defHand = state.attacker === 'player' ? state.ai : state.player;
-        return (card) => {
-            if (isAtt) {
-                if (state.table.length >= 6) return false;
+    function makePlayabilityChecker() {
+        const human = state.players[0];
+        if (human.eliminated) return () => false;
+        if (state.phase === 'play' && state.turnIdx === 0) {
+            const ranks = tableRanks();
+            const undef = state.table.filter(t => !t.def).length;
+            const defLeft = state.players[state.defenderIdx].hand.length;
+            return (card) => {
                 if (state.table.length === 0) return true;
-                if (undef >= defHand.length) return false;
+                if (state.table.length >= 6) return false;
+                if (undef >= defLeft) return false;
                 return ranks.has(card.rank);
-            }
-            if (isDef && target) return canBeat(target.att, card, state.trump);
-            return false;
-        };
+            };
+        }
+        if (state.phase === 'defend' && state.defenderIdx === 0) {
+            const target = state.table.find(t => !t.def);
+            if (!target) return () => false;
+            return (card) => canBeat(target.att, card, state.trump);
+        }
+        return () => false;
     }
 
-    function onCardClick(card) {
-        const idx = state.player.indexOf(card);
-        if (idx < 0) return;
-        if (state.phase === 'attack' && state.turn === 'player') playerAttack(idx);
-        else if (state.phase === 'defense' && state.turn === 'player') playerDefend(idx);
+    function onHumanCardClick(card) {
+        if (!state || state.phase === 'over') return;
+        if (state.phase === 'play' && state.turnIdx === 0) play(0, card);
+        else if (state.phase === 'defend' && state.defenderIdx === 0) defend(0, card);
     }
 
     function schedule(fn, ms) {
@@ -1591,10 +1674,33 @@ games.durak = (function() {
         timeoutId = setTimeout(() => { timeoutId = null; fn(); }, ms);
     }
 
-    restartBtn.addEventListener('click', () => { overEl.classList.add('hidden'); newGame(); });
+    // Селектор количества игроков
+    function refreshPick() {
+        playersPick.querySelectorAll('.players-btn').forEach(btn => {
+            btn.classList.toggle('selected', parseInt(btn.dataset.n, 10) === selectedCount);
+        });
+        botsCountEl.textContent = selectedCount - 1;
+    }
+    playersPick.querySelectorAll('.players-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            selectedCount = parseInt(btn.dataset.n, 10);
+            refreshPick();
+        });
+    });
+    startBtn.addEventListener('click', () => newGame(selectedCount));
+    restartBtn.addEventListener('click', () => {
+        overEl.classList.add('hidden');
+        configEl.classList.remove('hidden');
+        refreshPick();
+    });
 
-    function start() { active = true; newGame(); }
-    function stop()  {
+    function start() {
+        active = true;
+        configEl.classList.remove('hidden');
+        overEl.classList.add('hidden');
+        refreshPick();
+    }
+    function stop() {
         active = false;
         if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; }
     }

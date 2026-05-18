@@ -413,86 +413,103 @@ body {
     min-height: 0;
 }
 
-.ai-zone {
+/* Оппоненты (1-5 ботов) */
+.opponents {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    padding: 4px;
+    flex-shrink: 0;
+}
+.opp {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
-    flex-shrink: 0;
+    gap: 3px;
+    padding: 5px 9px 6px;
+    border-radius: 12px;
+    border: 2px solid transparent;
+    background: rgba(0,0,0,0.32);
+    min-width: 72px;
+    transition: border-color 0.2s, transform 0.2s;
 }
-.ai-info { color: #cfd; font-size: 12px; font-weight: 700; opacity: 0.8; }
-.ai-hand {
+.opp.attacker { border-color: #ffd84d; box-shadow: 0 0 12px rgba(255,216,77,0.4); }
+.opp.defender { border-color: #ff6644; box-shadow: 0 0 12px rgba(255,102,68,0.4); }
+.opp.eliminated { opacity: 0.4; }
+.opp-name { color: #fff; font-size: 13px; font-weight: 700; }
+.opp-cards {
     display: flex;
-    min-height: 54px;
-    padding-left: 14px;
+    min-height: 32px;
+    padding-left: 10px;
 }
-.ai-hand .card-mini {
-    width: 36px;
-    height: 52px;
-    margin-left: -14px;
-    background: repeating-linear-gradient(45deg, #6a3e9a 0 6px, #4a2e7a 6px 12px);
+.opp-cards .card-mini {
+    width: 22px;
+    height: 32px;
+    margin-left: -10px;
+    background: repeating-linear-gradient(45deg, #6a3e9a 0 5px, #4a2e7a 5px 10px);
     border: 1px solid #4a2e7a;
-    border-radius: 5px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    border-radius: 4px;
     flex-shrink: 0;
 }
+.opp-cards .card-mini:first-child { margin-left: 0; }
+.opp-count { color: #cfd; font-size: 11px; opacity: 0.8; }
 
 .middle-zone {
     flex: 1;
     display: grid;
-    grid-template-columns: 92px 1fr 64px;
-    gap: 6px;
+    grid-template-columns: 120px 1fr 64px;
+    gap: 8px;
     align-items: center;
     min-height: 0;
 }
 
 .deck-zone {
     position: relative;
-    height: 84px;
-    display: flex;
-    align-items: center;
+    height: 100px;
+    width: 120px;
 }
 .trump-card-slot {
     position: absolute;
-    left: -8px;
+    left: 6px;
     top: 50%;
     transform: translateY(-50%);
     z-index: 0;
 }
 .trump-card-slot .card {
     transform: rotate(-90deg);
-    box-shadow: 0 4px 12px rgba(255,216,77,0.3);
+    box-shadow: 0 4px 14px rgba(255,216,77,0.35);
 }
 .trump-indicator {
-    width: 60px;
-    height: 36px;
+    width: 64px;
+    height: 38px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: rgba(255,255,255,0.08);
     border: 1px solid rgba(255,255,255,0.2);
     border-radius: 6px;
-    font-size: 26px;
+    font-size: 28px;
 }
 .trump-indicator[data-color="red"] { color: #ff6677; }
 .trump-indicator[data-color="black"] { color: #fff; }
 .deck-pile {
     position: absolute;
-    left: 28px;
+    left: 58px;
     top: 50%;
     transform: translateY(-50%);
-    width: 60px;
-    height: 84px;
+    width: 64px;
+    height: 90px;
     background: repeating-linear-gradient(45deg, #6a3e9a 0 8px, #4a2e7a 8px 16px);
     border: 1px solid #4a2e7a;
     border-radius: 6px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.4);
     display: flex;
     align-items: center;
     justify-content: center;
     color: #fff;
     font-weight: 800;
-    font-size: 14px;
+    font-size: 15px;
     z-index: 1;
 }
 
@@ -500,11 +517,11 @@ body {
     align-self: stretch;
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 8px;
     justify-content: center;
     align-items: center;
-    padding: 6px;
-    min-height: 96px;
+    padding: 8px;
+    min-height: 104px;
     border: 1px dashed rgba(255,255,255,0.08);
     border-radius: 8px;
     position: relative;
@@ -521,20 +538,23 @@ body {
 
 .table-pair {
     position: relative;
-    width: 54px;
-    height: 76px;
+    width: 60px;
+    height: 86px;
 }
-.table-pair .card { width: 54px; height: 76px; font-size: smaller; }
+.table-pair .card {
+    width: 60px;
+    height: 86px;
+}
 .table-pair .card.def {
     position: absolute;
-    top: 10px;
-    left: 14px;
+    top: 12px;
+    left: 16px;
     transform: rotate(8deg);
 }
 
 .discard-zone {
-    width: 54px;
-    height: 76px;
+    width: 60px;
+    height: 86px;
     border: 2px dashed rgba(255,255,255,0.2);
     border-radius: 6px;
     display: flex;
@@ -555,13 +575,13 @@ body {
 .player-actions {
     display: flex;
     gap: 8px;
-    min-height: 38px;
+    min-height: 40px;
     align-items: center;
 }
 .action-btn {
     background: linear-gradient(180deg, #ffd84d 0%, #ff9a1e 100%);
     color: #1a1a2e;
-    padding: 8px 22px;
+    padding: 9px 22px;
     border: none;
     border-radius: 10px;
     font-weight: 800;
@@ -574,27 +594,27 @@ body {
     background: linear-gradient(180deg, #ff7777 0%, #cc3333 100%);
     color: #fff;
 }
+.action-btn:disabled { opacity: 0.4; cursor: default; }
 
 .player-hand {
     display: flex;
     max-width: 100%;
     overflow-x: auto;
-    padding: 10px 4px 4px;
+    padding: 12px 4px 6px 26px;
     scrollbar-width: none;
-    padding-left: 22px;
 }
 .player-hand::-webkit-scrollbar { display: none; }
 
-/* Карты */
+/* Карты — крупнее */
 .card {
     flex-shrink: 0;
-    width: 56px;
-    height: 78px;
+    width: 66px;
+    height: 92px;
     background: linear-gradient(180deg, #fff 0%, #f0eee0 100%);
     border: 1px solid #c0c0c0;
-    border-radius: 6px;
+    border-radius: 7px;
     position: relative;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.35);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.4);
     font-family: Georgia, "Times New Roman", serif;
     font-weight: 800;
     color: #1a1a1a;
@@ -605,16 +625,16 @@ body {
 
 .card-rank {
     position: absolute;
-    top: 3px;
-    left: 5px;
-    font-size: 13px;
+    top: 4px;
+    left: 6px;
+    font-size: 16px;
     line-height: 1;
 }
 .card-suit-small {
     position: absolute;
-    top: 18px;
-    left: 5px;
-    font-size: 12px;
+    top: 22px;
+    left: 6px;
+    font-size: 14px;
     line-height: 1;
 }
 .card-suit-big {
@@ -623,20 +643,45 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 28px;
+    font-size: 36px;
 }
 
 .player-hand .card {
-    margin-left: -22px;
+    margin-left: -26px;
     transition: transform 0.12s;
 }
 .player-hand .card:first-child { margin-left: 0; }
 .player-hand .card.playable {
-    box-shadow: 0 0 0 2px #ffd84d, 0 4px 12px rgba(255,216,77,0.5);
+    box-shadow: 0 0 0 2px #ffd84d, 0 4px 14px rgba(255,216,77,0.55);
     cursor: pointer;
 }
-.player-hand .card.playable:active { transform: translateY(-10px); }
+.player-hand .card.playable:active { transform: translateY(-12px); }
 .player-hand .card:not(.playable) { opacity: 0.55; }
+
+/* Селектор количества игроков */
+.players-pick {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+.players-btn {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.05);
+    color: #fff;
+    font-size: 22px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform 0.1s, border-color 0.1s, background 0.1s;
+}
+.players-btn:active { transform: scale(0.92); }
+.players-btn.selected {
+    border-color: #ffd84d;
+    background: rgba(255, 216, 77, 0.18);
+    color: #ffd84d;
+}
 
 /* ═══ РЕКОРДЫ ═══════════════════════════════════ */
 .records-body {

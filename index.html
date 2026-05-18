@@ -67,10 +67,7 @@
         <div class="game-score" id="durakStatus">—</div>
     </div>
     <div class="durak-board">
-        <div class="ai-zone">
-            <div class="ai-info">Бот: <span id="durakAiCount">6</span> карт</div>
-            <div class="ai-hand" id="durakAiHand"></div>
-        </div>
+        <div class="opponents" id="durakOpponents"></div>
         <div class="middle-zone">
             <div class="deck-zone">
                 <div class="trump-card-slot" id="durakTrumpSlot"></div>
@@ -87,6 +84,19 @@
             <div class="player-actions" id="durakActions"></div>
             <div class="player-hand" id="durakHand"></div>
         </div>
+    </div>
+    <div class="overlay" id="durakConfigScreen">
+        <h1>🃏 Дурак</h1>
+        <p class="tagline">Сколько игроков за столом?</p>
+        <div class="players-pick" id="durakPlayersPick">
+            <button class="players-btn" data-n="2">2</button>
+            <button class="players-btn" data-n="3">3</button>
+            <button class="players-btn" data-n="4">4</button>
+            <button class="players-btn" data-n="5">5</button>
+            <button class="players-btn" data-n="6">6</button>
+        </div>
+        <p class="tagline">Ты + <span id="durakBotsCount">1</span> бот(ов)</p>
+        <button class="btn-play" id="durakStartBtn">ИГРАТЬ</button>
     </div>
     <div class="overlay hidden" id="durakOverScreen">
         <h1 id="durakResult">Победа!</h1>

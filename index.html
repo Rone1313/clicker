@@ -3,73 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hamster Clicker</title>
+    <title>Хомяк vs Трамп — Космический бой</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="app">
-        <header class="header">
-            <div class="greeting" id="greeting">Привет, друг!</div>
-            <div class="coin-counter">
-                <span class="coin-icon">🪙</span>
-                <span class="coin-value" id="coinValue">0</span>
-            </div>
-            <div class="stats">
-                <span id="perTap">+1 за тап</span>
-                <span id="perSec">0/сек</span>
-            </div>
-            <div class="booster-status" id="boosterStatus"></div>
-        </header>
+    <div class="game-wrap">
+        <canvas id="gameCanvas"></canvas>
 
-        <main class="main">
-            <button class="tap-button" id="tapButton">
-                <span class="tap-emoji">🐹</span>
-            </button>
-            <div class="floating-container" id="floatingContainer"></div>
-        </main>
-
-        <section class="upgrades">
-            <h2 class="upgrades-title">Апгрейды</h2>
-            <div class="upgrade-card" id="upgrade-tap">
-                <div class="upgrade-icon">👆</div>
-                <div class="upgrade-info">
-                    <div class="upgrade-name">Сильный палец</div>
-                    <div class="upgrade-desc">+1 монета за тап</div>
-                    <div class="upgrade-level">Уровень: <span id="tap-level">0</span></div>
-                </div>
-                <div class="upgrade-price">
-                    <span class="price-icon">🪙</span>
-                    <span id="tap-price">50</span>
-                </div>
+        <div class="hud">
+            <div class="hud-left">
+                <div class="score">Счёт: <span id="score">0</span></div>
+                <div class="level">Уровень: <span id="level">1</span></div>
             </div>
-
-            <div class="upgrade-card" id="upgrade-auto">
-                <div class="upgrade-icon">🤖</div>
-                <div class="upgrade-info">
-                    <div class="upgrade-name">Автокликер</div>
-                    <div class="upgrade-desc">+1 монета в секунду</div>
-                    <div class="upgrade-level">Уровень: <span id="auto-level">0</span></div>
-                </div>
-                <div class="upgrade-price">
-                    <span class="price-icon">🪙</span>
-                    <span id="auto-price">200</span>
-                </div>
+            <div class="hud-right">
+                <div class="lives" id="lives">❤❤❤</div>
             </div>
+        </div>
 
-            <div class="upgrade-card" id="upgrade-boost">
-                <div class="upgrade-icon">⚡</div>
-                <div class="upgrade-info">
-                    <div class="upgrade-name">Бустер x2</div>
-                    <div class="upgrade-desc">Удваивает доход на 30 сек</div>
-                    <div class="upgrade-level">Использовано: <span id="boost-level">0</span></div>
-                </div>
-                <div class="upgrade-price">
-                    <span class="price-icon">🪙</span>
-                    <span id="boost-price">500</span>
-                </div>
-            </div>
-        </section>
+        <div class="overlay" id="startScreen">
+            <h1>🐹 vs 🇺🇸</h1>
+            <h2>Космический бой</h2>
+            <p class="tagline">Хомяк защищает галактику от армии Трампов!</p>
+            <ul class="howto">
+                <li>📱 Веди пальцем — хомяк летит за тобой</li>
+                <li>🌰 Стрельба семечками — автоматически</li>
+                <li>💥 Уворачивайся от красных «твитов»</li>
+            </ul>
+            <button class="btn-play" id="startBtn">В БОЙ!</button>
+        </div>
+
+        <div class="overlay hidden" id="gameOverScreen">
+            <h1>💀 Поражение</h1>
+            <p class="final-score">Счёт: <span id="finalScore">0</span></p>
+            <p class="tagline" id="gameOverMsg">Трамп захватил галактику…</p>
+            <button class="btn-play" id="restartBtn">ЕЩЁ РАЗ</button>
+        </div>
     </div>
 
     <script src="script.js"></script>

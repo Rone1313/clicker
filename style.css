@@ -1,268 +1,139 @@
-:root {
-    --tg-bg: var(--tg-theme-bg-color, #17212b);
-    --tg-text: var(--tg-theme-text-color, #ffffff);
-    --tg-button: var(--tg-theme-button-color, #5288c1);
-    --tg-button-text: var(--tg-theme-button-text-color, #ffffff);
-    --tg-hint: var(--tg-theme-hint-color, #708499);
-    --tg-secondary: var(--tg-theme-secondary-bg-color, #232e3c);
-
-    --gold-1: #ffcc33;
-    --gold-2: #ff9500;
-    --gold-3: #ff6b00;
-}
-
 * {
-    box-sizing: border-box;
     margin: 0;
     padding: 0;
+    box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
-    -webkit-user-select: none;
     user-select: none;
+    -webkit-user-select: none;
 }
 
 html, body {
     width: 100%;
-    min-height: 100vh;
-    overflow-x: hidden;
-    background: var(--tg-bg);
-    color: var(--tg-text);
+    height: 100%;
+    overflow: hidden;
+    background: #000;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    overscroll-behavior: none;
+    color: #fff;
+    touch-action: none;
 }
 
-.app {
+.game-wrap {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, #0a0a2e 0%, #000 80%);
+}
+
+#gameCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+}
+
+/* HUD ────────────────────────────────────────── */
+.hud {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 14px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    pointer-events: none;
+    z-index: 5;
+    font-weight: 700;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.8);
+}
+
+.hud-left {
     display: flex;
     flex-direction: column;
-    min-height: 100vh;
-    padding: 16px;
-    max-width: 480px;
-    margin: 0 auto;
+    gap: 4px;
 }
 
-/* Header */
-.header {
-    text-align: center;
-    padding: 12px 0 8px;
-}
+.score { font-size: 22px; color: #ffd84d; }
+.level { font-size: 14px; color: #9ad5ff; opacity: 0.85; }
+.lives { font-size: 22px; letter-spacing: 2px; }
 
-.greeting {
-    font-size: 16px;
-    color: var(--tg-hint);
-    margin-bottom: 8px;
-}
-
-.coin-counter {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    font-size: 44px;
-    font-weight: 800;
-    color: var(--gold-1);
-    text-shadow: 0 2px 12px rgba(255, 204, 51, 0.4);
-}
-
-.coin-icon {
-    font-size: 38px;
-}
-
-.stats {
-    display: flex;
-    justify-content: center;
-    gap: 16px;
-    margin-top: 8px;
-    font-size: 14px;
-    color: var(--tg-hint);
-}
-
-.stats span {
-    background: var(--tg-secondary);
-    padding: 4px 10px;
-    border-radius: 12px;
-}
-
-.booster-status {
-    margin-top: 8px;
-    font-size: 14px;
-    color: var(--gold-1);
-    font-weight: 600;
-    min-height: 20px;
-}
-
-/* Main tap area */
-.main {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px 0;
-    position: relative;
-}
-
-.tap-button {
-    width: 240px;
-    height: 240px;
-    border-radius: 50%;
-    border: none;
-    cursor: pointer;
-    background: radial-gradient(circle at 35% 30%, #ffe066 0%, var(--gold-1) 35%, var(--gold-2) 70%, var(--gold-3) 100%);
-    box-shadow:
-        0 10px 30px rgba(255, 149, 0, 0.45),
-        0 0 60px rgba(255, 204, 51, 0.25),
-        inset 0 -8px 20px rgba(0, 0, 0, 0.2),
-        inset 0 8px 20px rgba(255, 255, 255, 0.3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.08s ease;
-    position: relative;
-}
-
-.tap-button:active,
-.tap-button.tapped {
-    transform: scale(0.95);
-}
-
-.tap-emoji {
-    font-size: 180px;
-    line-height: 1;
-    pointer-events: none;
-    filter: hue-rotate(90deg) saturate(1.6) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
-}
-
-/* Floating "+N" */
-.floating-container {
+/* Оверлеи ─────────────────────────────────────── */
+.overlay {
     position: absolute;
     inset: 0;
-    pointer-events: none;
-    overflow: visible;
-}
-
-.floating-coin {
-    position: absolute;
-    font-size: 28px;
-    font-weight: 800;
-    color: var(--gold-1);
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
-    pointer-events: none;
-    animation: floatUp 0.9s ease-out forwards;
-}
-
-@keyframes floatUp {
-    0% {
-        transform: translateY(0) scale(0.8);
-        opacity: 1;
-    }
-    50% {
-        transform: translateY(-60px) scale(1.2);
-        opacity: 1;
-    }
-    100% {
-        transform: translateY(-140px) scale(1);
-        opacity: 0;
-    }
-}
-
-/* Upgrades */
-.upgrades {
-    padding: 12px 0 24px;
-}
-
-.upgrades-title {
-    font-size: 18px;
-    font-weight: 700;
-    margin-bottom: 12px;
-    padding-left: 4px;
-    color: var(--tg-text);
-}
-
-.upgrade-card {
+    background: rgba(5, 5, 25, 0.88);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     display: flex;
-    align-items: center;
-    gap: 12px;
-    background: var(--tg-secondary);
-    border-radius: 16px;
-    padding: 14px;
-    margin-bottom: 10px;
-    cursor: pointer;
-    transition: transform 0.15s ease, background 0.2s ease, box-shadow 0.2s ease;
-    border: 2px solid transparent;
-}
-
-.upgrade-card.affordable {
-    border-color: var(--gold-2);
-    box-shadow: 0 0 16px rgba(255, 149, 0, 0.2);
-}
-
-.upgrade-card.affordable:hover,
-.upgrade-card.affordable:active {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 20px rgba(255, 149, 0, 0.4);
-}
-
-.upgrade-card.locked {
-    opacity: 0.5;
-    filter: grayscale(0.6);
-    cursor: not-allowed;
-}
-
-.upgrade-icon {
-    font-size: 36px;
-    width: 56px;
-    height: 56px;
-    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 14px;
-    flex-shrink: 0;
+    text-align: center;
+    padding: 24px;
+    z-index: 10;
+    transition: opacity 0.25s ease;
 }
 
-.upgrade-info {
-    flex: 1;
-    min-width: 0;
+.overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
 }
 
-.upgrade-name {
-    font-size: 16px;
-    font-weight: 700;
-    margin-bottom: 2px;
-}
-
-.upgrade-desc {
-    font-size: 12px;
-    color: var(--tg-hint);
+.overlay h1 {
+    font-size: 44px;
     margin-bottom: 4px;
+    text-shadow: 0 0 24px rgba(255, 216, 77, 0.6);
 }
 
-.upgrade-level {
-    font-size: 12px;
-    color: var(--tg-hint);
+.overlay h2 {
+    font-size: 22px;
+    font-weight: 500;
+    color: #9ad5ff;
+    margin-bottom: 22px;
+    letter-spacing: 2px;
 }
 
-.upgrade-price {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    background: rgba(255, 204, 51, 0.12);
-    padding: 8px 12px;
-    border-radius: 12px;
-    font-weight: 700;
-    font-size: 15px;
-    color: var(--gold-1);
-    flex-shrink: 0;
-}
-
-.price-icon {
+.tagline {
     font-size: 16px;
+    color: #d5d5e8;
+    margin-bottom: 18px;
+    max-width: 340px;
+    line-height: 1.4;
 }
 
-/* Pulse */
-@keyframes pulse {
-    0%, 100% { box-shadow: 0 10px 30px rgba(255, 149, 0, 0.45), 0 0 60px rgba(255, 204, 51, 0.25), inset 0 -8px 20px rgba(0,0,0,0.2), inset 0 8px 20px rgba(255,255,255,0.3); }
-    50% { box-shadow: 0 10px 40px rgba(255, 149, 0, 0.7), 0 0 80px rgba(255, 204, 51, 0.5), inset 0 -8px 20px rgba(0,0,0,0.2), inset 0 8px 20px rgba(255,255,255,0.3); }
+.howto {
+    list-style: none;
+    text-align: left;
+    margin-bottom: 28px;
+    color: #c8c8e0;
+    font-size: 15px;
+    line-height: 2;
 }
 
-.tap-button.boosted {
-    animation: pulse 1s infinite;
+.final-score {
+    font-size: 28px;
+    color: #ffd84d;
+    margin-bottom: 18px;
+    font-weight: 700;
+}
+
+.btn-play {
+    background: linear-gradient(180deg, #ffd84d 0%, #ff9a1e 100%);
+    color: #1a1a2e;
+    font-size: 22px;
+    font-weight: 800;
+    padding: 16px 48px;
+    border: none;
+    border-radius: 16px;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(255, 154, 30, 0.5),
+                inset 0 -4px 0 rgba(0,0,0,0.15),
+                inset 0 2px 0 rgba(255,255,255,0.4);
+    transition: transform 0.1s, box-shadow 0.1s;
+    letter-spacing: 1px;
+}
+
+.btn-play:active {
+    transform: translateY(3px);
+    box-shadow: 0 4px 12px rgba(255, 154, 30, 0.5),
+                inset 0 -2px 0 rgba(0,0,0,0.15);
 }

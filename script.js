@@ -92,7 +92,7 @@ document.getElementById('dailyClose').addEventListener('click', () => {
 
 // Кнопка «Пригласить»
 document.getElementById('inviteBtn').addEventListener('click', () => {
-    share('🐹 Хомяк-Аркада: 5 игр про хомяка против Трампа и Путина! Залетай:');
+    share('🐹 Хомяк-Аркада — МинИИгры для отдыха и развлечений. Залетай:');
 });
 
 // Кнопки «Похвастаться» в каждой игре

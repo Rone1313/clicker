@@ -5,6 +5,27 @@
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 
+// ─── Рекорды (личные, в localStorage) ──────────────────────
+const Records = (function() {
+    function load() {
+        try { return JSON.parse(localStorage.getItem('records') || '{}'); }
+        catch { return {}; }
+    }
+    function save(r) { localStorage.setItem('records', JSON.stringify(r)); }
+    function update(game, score) {
+        const r = load();
+        const isBest = !r[game] || score > r[game];
+        if (isBest) { r[game] = score; save(r); }
+        return isBest;
+    }
+    function getName() {
+        const u = tg?.initDataUnsafe?.user;
+        if (u?.first_name) return ((u.first_name || '') + ' ' + (u.last_name || '')).trim();
+        return localStorage.getItem('playerName') || 'Хомякнавт';
+    }
+    return { load, save, update, getName };
+})();
+
 // ─── Маршрутизатор экранов ─────────────────────────────────
 const screens = {
     hub:     document.getElementById('hubScreen'),
@@ -12,6 +33,7 @@ const screens = {
     g2048:   document.getElementById('g2048Screen'),
     snake:   document.getElementById('snakeScreen'),
     runner:  document.getElementById('runnerScreen'),
+    records: document.getElementById('recordsScreen'),
 };
 
 let activeGame = null;        // имя активной игры или null (хаб)
@@ -105,10 +127,13 @@ games.shooter = (function() {
     function gameOver() {
         game.running = false;
         finalScore.textContent = game.score;
-        overMsg.textContent = game.score < 200 ? 'Трамп захватил галактику…'
+        const isBest = Records.update('shooter', game.score);
+        overMsg.textContent = isBest
+            ? '🏆 НОВЫЙ РЕКОРД!'
+            : game.score < 200 ? 'Трамп захватил галактику…'
             : game.score < 800 ? 'Достойное сопротивление!'
             : game.score < 2000 ? 'Почти спас всех!'
-            : '🏆 Легенда галактики!';
+            : 'Легенда галактики!';
         overScreen.classList.remove('hidden');
     }
     function updateHUD() {
@@ -132,10 +157,13 @@ games.shooter = (function() {
     function spawnEnemy() {
         const size = 50 + Math.random()*18;
         const x = size + Math.random()*(W - size*2);
-        const speed = 50 + Math.random()*30 + game.level*12;
-        const hp = 1 + Math.floor(game.level/3);
-        game.enemies.push({ x, y:-size, size, vx:(Math.random()-0.5)*60, vy:speed, hp, maxHp:hp,
-            shootTimer:1200+Math.random()*2000, zigzag:Math.random()<0.4, phase:Math.random()*Math.PI*2 });
+        const type = Math.random() < 0.55 ? 'trump' : 'putin';
+        // Путин чуть быстрее и стреляет чаще
+        const speed = (type === 'putin' ? 65 : 50) + Math.random()*30 + game.level*12;
+        const hp = 1 + Math.floor(game.level/3) + (type === 'putin' ? 1 : 0);
+        game.enemies.push({ x, y:-size, size, type, vx:(Math.random()-0.5)*60, vy:speed, hp, maxHp:hp,
+            shootTimer:(type==='putin'?900:1200)+Math.random()*1600,
+            zigzag:Math.random()<0.4, phase:Math.random()*Math.PI*2 });
     }
     function heroShoot() {
         const h = game.hero;
@@ -153,7 +181,10 @@ games.shooter = (function() {
     }
     function spawnBoss() {
         const size = 130, hp = 30 + game.level*8;
-        game.boss = { x:W/2, y:-size, targetY:150, size, hp, maxHp:hp, phase:0, patternTimer:1500, pattern:0, entering:true };
+        // Боссы чередуются: Трамп → Путин → Трамп → …
+        const bossNum = Math.floor(game.level / 3);
+        const type = bossNum % 2 === 1 ? 'trump' : 'putin';
+        game.boss = { x:W/2, y:-size, targetY:150, size, type, hp, maxHp:hp, phase:0, patternTimer:1500, pattern:0, entering:true };
     }
     function bossShoot(b) {
         const p = b.pattern % 3;
@@ -326,6 +357,56 @@ games.shooter = (function() {
         ctx.fillStyle = 'rgba(255,255,255,0.6)';
         ctx.beginPath(); ctx.arc(b.x-b.size*0.3, b.y-b.size*0.3, b.size*0.35, 0, Math.PI*2); ctx.fill();
     }
+    function drawPutinFace(x,y,s,withCap=false) {
+        // Тёмно-серый пиджак
+        ctx.fillStyle = '#2f2f2f';
+        ctx.beginPath(); ctx.moveTo(x-s*0.5, y+s*0.15); ctx.lineTo(x+s*0.5, y+s*0.15); ctx.lineTo(x+s*0.45, y+s*0.65); ctx.lineTo(x-s*0.45, y+s*0.65); ctx.closePath(); ctx.fill();
+        // Красный галстук
+        ctx.fillStyle = '#cc0000';
+        ctx.beginPath(); ctx.moveTo(x-s*0.09, y+s*0.15); ctx.lineTo(x+s*0.09, y+s*0.15); ctx.lineTo(x+s*0.13, y+s*0.62); ctx.lineTo(x, y+s*0.68); ctx.lineTo(x-s*0.13, y+s*0.62); ctx.closePath(); ctx.fill();
+        // Бледное лицо
+        ctx.fillStyle = '#e8d0b5';
+        ctx.beginPath(); ctx.arc(x, y-s*0.05, s*0.36, 0, Math.PI*2); ctx.fill();
+        // Лысина — короткие серые волосы по бокам
+        ctx.fillStyle = '#a8a4a0';
+        ctx.beginPath();
+        ctx.moveTo(x-s*0.36, y-s*0.05);
+        ctx.quadraticCurveTo(x-s*0.42, y-s*0.28, x-s*0.18, y-s*0.32);
+        ctx.lineTo(x-s*0.18, y-s*0.2);
+        ctx.closePath(); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(x+s*0.36, y-s*0.05);
+        ctx.quadraticCurveTo(x+s*0.42, y-s*0.28, x+s*0.18, y-s*0.32);
+        ctx.lineTo(x+s*0.18, y-s*0.2);
+        ctx.closePath(); ctx.fill();
+        // Корона/шапка для босса
+        if (withCap) {
+            ctx.fillStyle = '#7a1818';
+            ctx.beginPath();
+            ctx.moveTo(x-s*0.42, y-s*0.18);
+            ctx.lineTo(x-s*0.42, y-s*0.4);
+            ctx.lineTo(x-s*0.22, y-s*0.32);
+            ctx.lineTo(x,        y-s*0.5);
+            ctx.lineTo(x+s*0.22, y-s*0.32);
+            ctx.lineTo(x+s*0.42, y-s*0.4);
+            ctx.lineTo(x+s*0.42, y-s*0.18);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#ffd84d';
+            ctx.beginPath(); ctx.arc(x-s*0.22, y-s*0.32, s*0.04, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x,        y-s*0.5,  s*0.05, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x+s*0.22, y-s*0.32, s*0.04, 0, Math.PI*2); ctx.fill();
+        }
+        // Холодные узкие глаза
+        ctx.fillStyle = '#000';
+        ctx.fillRect(x-s*0.19, y-s*0.08, s*0.11, s*0.025);
+        ctx.fillRect(x+s*0.08, y-s*0.08, s*0.11, s*0.025);
+        // Поджатые губы
+        ctx.beginPath();
+        ctx.ellipse(x, y+s*0.09, s*0.07, s*0.015, 0, 0, Math.PI*2);
+        ctx.fill();
+    }
+
     function drawTrumpFace(x,y,s,withHair=true,withCap=false) {
         ctx.fillStyle = '#1a2342';
         ctx.beginPath(); ctx.moveTo(x-s*0.5, y+s*0.15); ctx.lineTo(x+s*0.5, y+s*0.15); ctx.lineTo(x+s*0.45, y+s*0.65); ctx.lineTo(x-s*0.45, y+s*0.65); ctx.closePath(); ctx.fill();
@@ -357,7 +438,8 @@ games.shooter = (function() {
         ctx.beginPath(); ctx.arc(x, y+s*0.08, s*0.06, 0, Math.PI*2); ctx.fill();
     }
     function drawEnemy(e) {
-        drawTrumpFace(e.x, e.y, e.size, true, false);
+        if (e.type === 'putin') drawPutinFace(e.x, e.y, e.size, false);
+        else                    drawTrumpFace(e.x, e.y, e.size, true, false);
         if (e.maxHp > 1) {
             const w = e.size*0.8;
             ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(e.x-w/2, e.y-e.size*0.55, w, 4);
@@ -368,7 +450,8 @@ games.shooter = (function() {
         const gl = ctx.createRadialGradient(b.x, b.y, b.size*0.4, b.x, b.y, b.size*1.4);
         gl.addColorStop(0, 'rgba(255,60,60,0.45)'); gl.addColorStop(1, 'rgba(255,60,60,0)');
         ctx.fillStyle = gl; ctx.fillRect(b.x-b.size*1.4, b.y-b.size*1.4, b.size*2.8, b.size*2.8);
-        drawTrumpFace(b.x, b.y, b.size, false, true);
+        if (b.type === 'putin') drawPutinFace(b.x, b.y, b.size, true);
+        else                    drawTrumpFace(b.x, b.y, b.size, false, true);
         if (!b.entering) {
             const barW = Math.min(W*0.7, 420), barH = 12;
             const barX = (W-barW)/2, barY = 64;
@@ -376,7 +459,7 @@ games.shooter = (function() {
             ctx.fillStyle = '#ff3b3b'; ctx.fillRect(barX, barY, barW*(b.hp/b.maxHp), barH);
             ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.strokeRect(barX, barY, barW, barH);
             ctx.fillStyle = '#fff'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
-            ctx.fillText('БОСС: ТРАМП-ИМПЕРАТОР', W/2, barY-6);
+            ctx.fillText(b.type === 'putin' ? 'БОСС: ПУТИН-ЦАРЬ' : 'БОСС: ТРАМП-ИМПЕРАТОР', W/2, barY-6);
         }
     }
     function drawParticles() {
@@ -581,6 +664,7 @@ games.g2048 = (function() {
         updateScore();
         if (tg?.HapticFeedback && totalGained > 0) tg.HapticFeedback.impactOccurred('light');
         if (won && !over) {
+            Records.update('g2048', score);
             resultEl.textContent = '🏆 ПОБЕДА! 2048!';
             finalEl.textContent = score;
             overEl.classList.remove('hidden');
@@ -588,7 +672,8 @@ games.g2048 = (function() {
             return;
         }
         if (!hasMoves()) {
-            resultEl.textContent = '💀 Игра окончена';
+            const isBest = Records.update('g2048', score);
+            resultEl.textContent = isBest ? '🏆 НОВЫЙ РЕКОРД!' : '💀 Игра окончена';
             finalEl.textContent = score;
             overEl.classList.remove('hidden');
             over = true;
@@ -659,12 +744,19 @@ games.snake = (function() {
     const finalEl   = document.getElementById('snakeFinal');
     const restartBtn= document.getElementById('snakeRestartBtn');
 
-    const GRID = 18;
-    let cell, snake, dir, nextDir, seed, score, alive, stepTimer, stepInterval, rafId, lastTime;
+    const GRID = 15;
+    // Типы еды и их параметры
+    const FOOD_TYPES = {
+        seed:  { points: 1, growth: 1, speedup: 1.5 },
+        trump: { points: 3, growth: 1, speedup: 3   },
+        putin: { points: 5, growth: 2, speedup: 5   },
+    };
+    let cell, snake, dir, nextDir, food, score, alive, stepTimer, stepInterval, rafId, lastTime;
+    let pendingGrowth = 0;
     let active = false;
 
     function resize() {
-        const size = canvas.clientWidth;
+        const size = Math.min(canvas.clientWidth, canvas.clientHeight) || canvas.clientWidth;
         const DPR = Math.min(window.devicePixelRatio || 1, 2);
         canvas.width = size * DPR;
         canvas.height = size * DPR;
@@ -676,34 +768,49 @@ games.snake = (function() {
         const mid = Math.floor(GRID/2);
         snake = [ {x:mid-1,y:mid}, {x:mid-2,y:mid}, {x:mid-3,y:mid} ];
         dir = {x:1,y:0}; nextDir = {x:1,y:0};
-        placeSeed();
-        score = 0; alive = true; stepTimer = 0; stepInterval = 130;
+        score = 0; alive = true; stepTimer = 0;
+        stepInterval = 220;     // существенно медленнее старт
+        pendingGrowth = 0;
+        placeFood();
         scoreEl.textContent = score;
         overEl.classList.add('hidden');
         lastTime = performance.now();
     }
 
-    function placeSeed() {
+    function pickFoodType() {
+        const r = Math.random();
+        if (r < 0.6)  return 'seed';
+        if (r < 0.9)  return 'trump';
+        return 'putin';
+    }
+
+    function placeFood() {
         while (true) {
             const x = Math.floor(Math.random()*GRID);
             const y = Math.floor(Math.random()*GRID);
-            if (!snake.some(s => s.x===x && s.y===y)) { seed = {x,y}; return; }
+            if (!snake.some(s => s.x===x && s.y===y)) {
+                food = { x, y, type: pickFoodType() };
+                return;
+            }
         }
     }
 
     function step() {
-        // Apply queued direction (no 180° reversal)
         if (nextDir.x !== -dir.x || nextDir.y !== -dir.y) dir = nextDir;
         const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
         if (head.x < 0 || head.x >= GRID || head.y < 0 || head.y >= GRID) return die();
         if (snake.some(s => s.x===head.x && s.y===head.y)) return die();
         snake.unshift(head);
-        if (head.x === seed.x && head.y === seed.y) {
-            score++;
+        if (head.x === food.x && head.y === food.y) {
+            const f = FOOD_TYPES[food.type];
+            score += f.points;
+            pendingGrowth += f.growth - 1;
+            stepInterval = Math.max(80, stepInterval - f.speedup);
             scoreEl.textContent = score;
-            stepInterval = Math.max(60, stepInterval - 3);
-            placeSeed();
+            placeFood();
             if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        } else if (pendingGrowth > 0) {
+            pendingGrowth--;
         } else {
             snake.pop();
         }
@@ -712,6 +819,7 @@ games.snake = (function() {
     function die() {
         alive = false;
         finalEl.textContent = score;
+        Records.update('snake', score);
         overEl.classList.remove('hidden');
         if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
     }
@@ -728,15 +836,23 @@ games.snake = (function() {
             ctx.beginPath(); ctx.moveTo(0, i*cell); ctx.lineTo(size, i*cell); ctx.stroke();
         }
 
-        // Семечка
-        ctx.fillStyle = '#ffd84d';
-        ctx.beginPath();
-        ctx.ellipse(seed.x*cell + cell/2, seed.y*cell + cell/2, cell*0.32, cell*0.42, 0, 0, Math.PI*2);
-        ctx.fill();
-        ctx.fillStyle = '#8a5a2b';
-        ctx.beginPath();
-        ctx.ellipse(seed.x*cell + cell/2, seed.y*cell + cell/2, cell*0.14, cell*0.22, 0, 0, Math.PI*2);
-        ctx.fill();
+        // Еда
+        const fx = food.x*cell + cell/2;
+        const fy = food.y*cell + cell/2;
+        if (food.type === 'seed') {
+            ctx.fillStyle = '#ffd84d';
+            ctx.beginPath();
+            ctx.ellipse(fx, fy, cell*0.32, cell*0.42, 0, 0, Math.PI*2);
+            ctx.fill();
+            ctx.fillStyle = '#8a5a2b';
+            ctx.beginPath();
+            ctx.ellipse(fx, fy, cell*0.14, cell*0.22, 0, 0, Math.PI*2);
+            ctx.fill();
+        } else if (food.type === 'trump') {
+            drawMiniTrump(fx, fy, cell*0.9);
+        } else {
+            drawMiniPutin(fx, fy, cell*0.9);
+        }
 
         // Хвост
         for (let i = snake.length-1; i > 0; i--) {
@@ -768,6 +884,52 @@ games.snake = (function() {
         ctx.closePath();
     }
 
+    function drawMiniTrump(x, y, s) {
+        // Лицо
+        ctx.fillStyle = '#f4a460';
+        ctx.beginPath(); ctx.arc(x, y, s*0.42, 0, Math.PI*2); ctx.fill();
+        // Жёлтая шевелюра
+        ctx.fillStyle = '#f4d03f';
+        ctx.beginPath();
+        ctx.moveTo(x - s*0.45, y - s*0.1);
+        ctx.quadraticCurveTo(x - s*0.3, y - s*0.55, x + s*0.1, y - s*0.45);
+        ctx.quadraticCurveTo(x + s*0.5, y - s*0.5, x + s*0.45, y - s*0.15);
+        ctx.quadraticCurveTo(x + s*0.1, y - s*0.3, x - s*0.45, y - s*0.1);
+        ctx.closePath(); ctx.fill();
+        // Глаза
+        ctx.fillStyle = '#000';
+        ctx.fillRect(x - s*0.18, y - s*0.05, s*0.1, s*0.04);
+        ctx.fillRect(x + s*0.08, y - s*0.05, s*0.1, s*0.04);
+        // Рот (буква О)
+        ctx.beginPath(); ctx.arc(x, y + s*0.18, s*0.08, 0, Math.PI*2); ctx.fill();
+    }
+
+    function drawMiniPutin(x, y, s) {
+        // Бледное лицо
+        ctx.fillStyle = '#e8d0b5';
+        ctx.beginPath(); ctx.arc(x, y, s*0.42, 0, Math.PI*2); ctx.fill();
+        // Серые «крылья» волос по бокам (лысина сверху)
+        ctx.fillStyle = '#a8a4a0';
+        ctx.beginPath();
+        ctx.moveTo(x - s*0.42, y);
+        ctx.quadraticCurveTo(x - s*0.5, y - s*0.3, x - s*0.2, y - s*0.4);
+        ctx.lineTo(x - s*0.2, y - s*0.2);
+        ctx.closePath(); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(x + s*0.42, y);
+        ctx.quadraticCurveTo(x + s*0.5, y - s*0.3, x + s*0.2, y - s*0.4);
+        ctx.lineTo(x + s*0.2, y - s*0.2);
+        ctx.closePath(); ctx.fill();
+        // Узкие холодные глаза
+        ctx.fillStyle = '#000';
+        ctx.fillRect(x - s*0.18, y - s*0.04, s*0.11, s*0.025);
+        ctx.fillRect(x + s*0.07, y - s*0.04, s*0.11, s*0.025);
+        // Тонкие губы
+        ctx.beginPath();
+        ctx.ellipse(x, y + s*0.18, s*0.09, s*0.018, 0, 0, Math.PI*2);
+        ctx.fill();
+    }
+
     function loop(now) {
         if (!active) return;
         const dt = (now - lastTime); lastTime = now;
@@ -781,8 +943,10 @@ games.snake = (function() {
 
     // Свайпы
     let sx=0, sy=0;
-    const onTouchStart = e => { const t=e.touches[0]; sx=t.clientX; sy=t.clientY; };
-    const onTouchEnd = e => {
+    const onTouchStart = e => { e.preventDefault(); const t=e.touches[0]; sx=t.clientX; sy=t.clientY; };
+    const onTouchMove  = e => { e.preventDefault(); };
+    const onTouchEnd   = e => {
+        e.preventDefault();
         const t = e.changedTouches[0];
         const dx = t.clientX - sx, dy = t.clientY - sy;
         const adx = Math.abs(dx), ady = Math.abs(dy);
@@ -803,8 +967,9 @@ games.snake = (function() {
     function start() {
         active = true;
         requestAnimationFrame(() => { resize(); newGame(); lastTime = performance.now(); rafId = requestAnimationFrame(loop); });
-        canvas.addEventListener('touchstart', onTouchStart, { passive:true });
-        canvas.addEventListener('touchend',   onTouchEnd,   { passive:true });
+        canvas.addEventListener('touchstart', onTouchStart, { passive:false });
+        canvas.addEventListener('touchmove',  onTouchMove,  { passive:false });
+        canvas.addEventListener('touchend',   onTouchEnd,   { passive:false });
         window.addEventListener('keydown', onKey);
         window.addEventListener('resize', onResize);
     }
@@ -812,6 +977,7 @@ games.snake = (function() {
         active = false;
         cancelAnimationFrame(rafId);
         canvas.removeEventListener('touchstart', onTouchStart);
+        canvas.removeEventListener('touchmove',  onTouchMove);
         canvas.removeEventListener('touchend',   onTouchEnd);
         window.removeEventListener('keydown', onKey);
         window.removeEventListener('resize', onResize);
@@ -870,7 +1036,9 @@ games.runner = (function() {
     function startGame() { newGame(); }
     function die() {
         alive = false;
-        finalEl.textContent = Math.floor(distance);
+        const dist = Math.floor(distance);
+        finalEl.textContent = dist;
+        Records.update('runner', dist);
         overScreen.classList.remove('hidden');
         if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
     }
@@ -1042,6 +1210,39 @@ games.runner = (function() {
         window.removeEventListener('keydown', onKey);
         window.removeEventListener('resize', onResize);
     }
+    return { start, stop };
+})();
+
+// ═══════════════════════════════════════════════════════════
+//  МОДУЛЬ 5 — РЕКОРДЫ
+// ═══════════════════════════════════════════════════════════
+games.records = (function() {
+    const nameEl = document.getElementById('recordsName');
+    const listEl = document.getElementById('recordsList');
+    const GAMES = [
+        { id: 'shooter', icon: '🚀', name: 'Космический бой', suffix: 'оч.' },
+        { id: 'g2048',   icon: '🔢', name: '2048',           suffix: 'оч.' },
+        { id: 'snake',   icon: '🐍', name: 'Змейка',         suffix: 'оч.' },
+        { id: 'runner',  icon: '🏃', name: 'Раннер',         suffix: 'м'   },
+    ];
+    function render() {
+        nameEl.textContent = Records.getName();
+        const r = Records.load();
+        listEl.innerHTML = '';
+        for (const g of GAMES) {
+            const row = document.createElement('div');
+            row.className = 'records-row';
+            const score = r[g.id];
+            row.innerHTML = `
+                <div class="rec-icon">${g.icon}</div>
+                <div class="rec-name">${g.name}</div>
+                <div class="rec-score">${score ? score + ' ' + g.suffix : '—'}</div>
+            `;
+            listEl.appendChild(row);
+        }
+    }
+    function start() { render(); }
+    function stop() {}
     return { start, stop };
 })();
 

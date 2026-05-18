@@ -42,6 +42,30 @@
                 <div class="card-desc">Тапай — прыгай через Трампов</div>
             </div>
         </button>
+        <button class="game-card" data-game="records">
+            <div class="card-emoji">🏆</div>
+            <div class="card-info">
+                <div class="card-title">Рекорды</div>
+                <div class="card-desc">Твои лучшие результаты</div>
+            </div>
+        </button>
+    </div>
+</div>
+
+<!-- ═══ РЕКОРДЫ ═══ -->
+<div class="screen game-screen hidden" id="recordsScreen">
+    <div class="game-header">
+        <button class="btn-back" data-back>←</button>
+        <div class="game-title">🏆 Рекорды</div>
+        <div class="game-score"></div>
+    </div>
+    <div class="records-body">
+        <div class="records-player">
+            <div class="rec-avatar">🐹</div>
+            <div class="rec-player-name" id="recordsName">Хомякнавт</div>
+        </div>
+        <div class="records-list" id="recordsList"></div>
+        <p class="records-note">Личные рекорды сохраняются на этом устройстве.</p>
     </div>
 </div>
 
@@ -118,7 +142,6 @@
     <div class="snake-wrap">
         <canvas id="snakeCanvas"></canvas>
     </div>
-    <p class="snake-hint">Свайпы по экрану меняют направление</p>
     <div class="overlay hidden" id="snakeOverScreen">
         <h1>💀 Поражение</h1>
         <p class="final-score">Счёт: <span id="snakeFinal">0</span></p>

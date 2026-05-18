@@ -33,6 +33,7 @@ const screens = {
     g2048:   document.getElementById('g2048Screen'),
     snake:   document.getElementById('snakeScreen'),
     runner:  document.getElementById('runnerScreen'),
+    durak:   document.getElementById('durakScreen'),
     records: document.getElementById('recordsScreen'),
 };
 
@@ -1214,7 +1215,394 @@ games.runner = (function() {
 })();
 
 // ═══════════════════════════════════════════════════════════
-//  МОДУЛЬ 5 — РЕКОРДЫ
+//  МОДУЛЬ 5 — ДУРАК
+// ═══════════════════════════════════════════════════════════
+games.durak = (function() {
+    const aiHandEl   = document.getElementById('durakAiHand');
+    const aiCountEl  = document.getElementById('durakAiCount');
+    const deckPileEl = document.getElementById('durakDeckPile');
+    const deckCountEl= document.getElementById('durakDeckCount');
+    const trumpSlotEl= document.getElementById('durakTrumpSlot');
+    const tableEl    = document.getElementById('durakTable');
+    const handEl     = document.getElementById('durakHand');
+    const actionsEl  = document.getElementById('durakActions');
+    const statusEl   = document.getElementById('durakStatus');
+    const overEl     = document.getElementById('durakOverScreen');
+    const resultEl   = document.getElementById('durakResult');
+    const resultMsgEl= document.getElementById('durakResultMsg');
+    const restartBtn = document.getElementById('durakRestartBtn');
+
+    const SUITS = ['♠','♥','♦','♣'];
+    const RANKS = ['6','7','8','9','10','В','Д','К','Т'];
+    const VAL = { '6':6,'7':7,'8':8,'9':9,'10':10,'В':11,'Д':12,'К':13,'Т':14 };
+    const RED = new Set(['♥','♦']);
+
+    let state = null;
+    let active = false;
+    let timeoutId = null;
+
+    function shuffle(a) {
+        for (let i = a.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random()*(i+1));
+            [a[i], a[j]] = [a[j], a[i]];
+        }
+    }
+    function freshDeck() {
+        const d = [];
+        for (const s of SUITS) for (const r of RANKS) d.push({ suit:s, rank:r });
+        return d;
+    }
+    function canBeat(att, def, trump) {
+        if (def.suit === trump && att.suit !== trump) return true;
+        if (def.suit === att.suit && VAL[def.rank] > VAL[att.rank]) return true;
+        return false;
+    }
+    function weight(c, trump) { return (c.suit === trump ? 100 : 0) + VAL[c.rank]; }
+    function tableRanks() {
+        const r = new Set();
+        for (const p of state.table) { r.add(p.att.rank); if (p.def) r.add(p.def.rank); }
+        return r;
+    }
+
+    function newGame() {
+        const deck = freshDeck();
+        shuffle(deck);
+        const trumpCard = deck[deck.length - 1];   // нижняя карта — козырь
+        const trump = trumpCard.suit;
+        const player = deck.splice(0, 6);
+        const ai = deck.splice(0, 6);
+        const lowTrump = h => {
+            const ts = h.filter(c => c.suit === trump).map(c => VAL[c.rank]).sort((a,b) => a-b);
+            return ts[0] ?? 999;
+        };
+        const attacker = lowTrump(player) <= lowTrump(ai) ? 'player' : 'ai';
+        state = { deck, trump, trumpCard, player, ai, table:[], attacker, phase:'attack', turn:attacker, loser:null };
+        overEl.classList.add('hidden');
+        render();
+        if (state.turn === 'ai') schedule(aiAction, 700);
+    }
+
+    function refill() {
+        const order = state.attacker === 'player' ? ['player','ai'] : ['ai','player'];
+        for (const who of order) {
+            while (state[who].length < 6 && state.deck.length > 0) {
+                state[who].push(state.deck.shift());
+            }
+        }
+    }
+
+    function checkOver() {
+        if (state.deck.length > 0) return false;
+        const pe = state.player.length === 0;
+        const ae = state.ai.length === 0;
+        if (!pe && !ae) return false;
+        if (pe && ae) state.loser = 'draw';
+        else if (pe) state.loser = 'ai';
+        else state.loser = 'player';
+        state.phase = 'over';
+        endGame();
+        return true;
+    }
+
+    function endGame() {
+        if (state.loser === 'draw') {
+            resultEl.textContent = '🤝 Ничья';
+            resultMsgEl.textContent = 'Оба остались без карт.';
+        } else if (state.loser === 'ai') {
+            resultEl.textContent = '🏆 ПОБЕДА!';
+            resultMsgEl.textContent = 'Бот — дурак!';
+            const prev = Records.load().durak || 0;
+            Records.update('durak', prev + 1);
+        } else {
+            resultEl.textContent = '💀 Ты дурак';
+            resultMsgEl.textContent = 'В следующий раз повезёт.';
+        }
+        overEl.classList.remove('hidden');
+    }
+
+    // ─── Игрок ────────────────────────────
+    function playerAttack(idx) {
+        if (state.turn !== 'player' || state.phase !== 'attack') return;
+        const card = state.player[idx];
+        if (!card) return;
+        if (state.table.length > 0 && !tableRanks().has(card.rank)) return;
+        if (state.table.length >= 6) return;
+        const undef = state.table.filter(p => !p.def).length;
+        const defHand = state.attacker === 'player' ? state.ai : state.player;
+        if (undef >= defHand.length) return;
+        state.player.splice(idx, 1);
+        state.table.push({ att: card, def: null });
+        state.phase = 'defense';
+        state.turn = (state.attacker === 'player') ? 'ai' : 'player';
+        // Если игрок атаковал — защищается бот; если игрок «подкидывал» (а атаковал бот) — тоже бот защищается
+        if (state.attacker === 'player') {
+            // Player атакует — AI defends
+            render();
+            schedule(aiAction, 700);
+        } else {
+            // Player is "adding" but attacker is ai — actually этого не должно произойти в 1v1
+            render();
+        }
+    }
+
+    function playerEndAttack() {
+        if (state.turn !== 'player' || state.phase !== 'attack') return;
+        if (state.table.length === 0) return;
+        if (state.table.some(p => !p.def)) return;
+        state.table = [];
+        refill();
+        state.attacker = 'ai';
+        state.phase = 'attack';
+        state.turn = 'ai';
+        if (checkOver()) { render(); return; }
+        render();
+        schedule(aiAction, 700);
+    }
+
+    function playerDefend(idx) {
+        if (state.turn !== 'player' || state.phase !== 'defense') return;
+        const card = state.player[idx];
+        if (!card) return;
+        const target = state.table.find(p => !p.def);
+        if (!target) return;
+        if (!canBeat(target.att, card, state.trump)) return;
+        target.def = card;
+        state.player.splice(idx, 1);
+        state.phase = 'attack';
+        state.turn = 'ai';
+        render();
+        schedule(aiAction, 700);
+    }
+
+    function playerTake() {
+        if (state.turn !== 'player' || state.phase !== 'defense') return;
+        for (const p of state.table) {
+            state.player.push(p.att);
+            if (p.def) state.player.push(p.def);
+        }
+        state.table = [];
+        refill();
+        state.attacker = 'ai';
+        state.phase = 'attack';
+        state.turn = 'ai';
+        if (checkOver()) { render(); return; }
+        render();
+        schedule(aiAction, 700);
+    }
+
+    // ─── ИИ ──────────────────────────────
+    function aiAction() {
+        if (!active || !state || state.phase === 'over') return;
+        if (state.turn !== 'ai') return;
+        if (state.phase === 'attack') aiAttack();
+        else if (state.phase === 'defense') aiDefend();
+    }
+
+    function aiAttack() {
+        let card = null;
+        if (state.table.length === 0) {
+            const sorted = [...state.ai].sort((a,b) => weight(a, state.trump) - weight(b, state.trump));
+            card = sorted[0];
+        } else {
+            const ranks = tableRanks();
+            const matching = state.ai.filter(c => ranks.has(c.rank));
+            if (matching.length) {
+                matching.sort((a,b) => weight(a, state.trump) - weight(b, state.trump));
+                card = matching[0];
+            }
+        }
+        const undef = state.table.filter(p => !p.def).length;
+        const defHand = state.attacker === 'ai' ? state.player : state.ai;
+        if (!card || state.table.length >= 6 || undef >= defHand.length) {
+            // Завершить атаку: бито
+            state.table = [];
+            refill();
+            state.attacker = 'player';
+            state.phase = 'attack';
+            state.turn = 'player';
+            if (checkOver()) { render(); return; }
+            render();
+            return;
+        }
+        state.ai.splice(state.ai.indexOf(card), 1);
+        state.table.push({ att: card, def: null });
+        state.phase = 'defense';
+        state.turn = 'player';
+        render();
+    }
+
+    function aiDefend() {
+        const target = state.table.find(p => !p.def);
+        if (!target) {
+            state.phase = 'attack';
+            state.turn = 'player';
+            render();
+            return;
+        }
+        const candidates = state.ai
+            .filter(c => canBeat(target.att, c, state.trump))
+            .sort((a,b) => weight(a, state.trump) - weight(b, state.trump));
+        if (candidates.length === 0) {
+            for (const p of state.table) {
+                state.ai.push(p.att);
+                if (p.def) state.ai.push(p.def);
+            }
+            state.table = [];
+            refill();
+            state.attacker = 'player';
+            state.phase = 'attack';
+            state.turn = 'player';
+            if (checkOver()) { render(); return; }
+            render();
+            return;
+        }
+        const def = candidates[0];
+        target.def = def;
+        state.ai.splice(state.ai.indexOf(def), 1);
+        state.phase = 'attack';
+        state.turn = 'player';
+        render();
+    }
+
+    // ─── Рендер ───────────────────────────
+    function makeCardEl(card) {
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.dataset.color = RED.has(card.suit) ? 'red' : 'black';
+        div.innerHTML = `
+            <div class="card-rank">${card.rank}</div>
+            <div class="card-suit-small">${card.suit}</div>
+            <div class="card-suit-big">${card.suit}</div>`;
+        return div;
+    }
+
+    function render() {
+        // Рука бота — рубашки
+        aiHandEl.innerHTML = '';
+        for (let i = 0; i < state.ai.length; i++) {
+            const m = document.createElement('div');
+            m.className = 'card-mini';
+            aiHandEl.appendChild(m);
+        }
+        aiCountEl.textContent = state.ai.length;
+
+        // Колода + козырь
+        trumpSlotEl.innerHTML = '';
+        if (state.deck.length > 0) {
+            trumpSlotEl.appendChild(makeCardEl(state.trumpCard));
+            deckPileEl.style.display = '';
+            deckCountEl.textContent = state.deck.length;
+        } else {
+            deckPileEl.style.display = 'none';
+            const ind = document.createElement('div');
+            ind.className = 'trump-indicator';
+            ind.dataset.color = RED.has(state.trump) ? 'red' : 'black';
+            ind.textContent = state.trump;
+            trumpSlotEl.appendChild(ind);
+        }
+
+        // Стол
+        // Сохраняем подсказку
+        const hint = tableEl.querySelector('.table-hint');
+        tableEl.innerHTML = '';
+        if (state.table.length === 0 && hint) tableEl.appendChild(hint);
+        for (const pair of state.table) {
+            const wrap = document.createElement('div');
+            wrap.className = 'table-pair';
+            const att = makeCardEl(pair.att);
+            att.classList.add('att');
+            wrap.appendChild(att);
+            if (pair.def) {
+                const def = makeCardEl(pair.def);
+                def.classList.add('def');
+                wrap.appendChild(def);
+            }
+            tableEl.appendChild(wrap);
+        }
+
+        // Рука игрока
+        handEl.innerHTML = '';
+        const checker = isPlayable();
+        state.player
+            .map((c, i) => ({ c, i }))
+            .sort((a, b) => weight(a.c, state.trump) - weight(b.c, state.trump))
+            .forEach(({ c, i }) => {
+                const el = makeCardEl(c);
+                if (checker(c)) {
+                    el.classList.add('playable');
+                    el.addEventListener('click', () => onCardClick(c));
+                }
+                handEl.appendChild(el);
+            });
+
+        // Кнопки
+        actionsEl.innerHTML = '';
+        if (state.phase === 'attack' && state.turn === 'player' &&
+            state.table.length > 0 && state.table.every(p => p.def)) {
+            const btn = document.createElement('button');
+            btn.className = 'action-btn';
+            btn.textContent = 'Бито';
+            btn.addEventListener('click', playerEndAttack);
+            actionsEl.appendChild(btn);
+        }
+        if (state.phase === 'defense' && state.turn === 'player') {
+            const btn = document.createElement('button');
+            btn.className = 'action-btn danger';
+            btn.textContent = 'Беру';
+            btn.addEventListener('click', playerTake);
+            actionsEl.appendChild(btn);
+        }
+
+        // Статус
+        if (state.phase === 'over') statusEl.textContent = '—';
+        else if (state.turn === 'player')
+            statusEl.textContent = state.phase === 'attack' ? 'Твой ход' : 'Защищайся';
+        else statusEl.textContent = 'Ход бота…';
+    }
+
+    function isPlayable() {
+        const isAtt = state.phase === 'attack' && state.turn === 'player';
+        const isDef = state.phase === 'defense' && state.turn === 'player';
+        const ranks = tableRanks();
+        const target = state.table.find(p => !p.def);
+        const undef = state.table.filter(p => !p.def).length;
+        const defHand = state.attacker === 'player' ? state.ai : state.player;
+        return (card) => {
+            if (isAtt) {
+                if (state.table.length >= 6) return false;
+                if (state.table.length === 0) return true;
+                if (undef >= defHand.length) return false;
+                return ranks.has(card.rank);
+            }
+            if (isDef && target) return canBeat(target.att, card, state.trump);
+            return false;
+        };
+    }
+
+    function onCardClick(card) {
+        const idx = state.player.indexOf(card);
+        if (idx < 0) return;
+        if (state.phase === 'attack' && state.turn === 'player') playerAttack(idx);
+        else if (state.phase === 'defense' && state.turn === 'player') playerDefend(idx);
+    }
+
+    function schedule(fn, ms) {
+        if (timeoutId) clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => { timeoutId = null; fn(); }, ms);
+    }
+
+    restartBtn.addEventListener('click', () => { overEl.classList.add('hidden'); newGame(); });
+
+    function start() { active = true; newGame(); }
+    function stop()  {
+        active = false;
+        if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; }
+    }
+    return { start, stop };
+})();
+
+// ═══════════════════════════════════════════════════════════
+//  МОДУЛЬ 6 — РЕКОРДЫ
 // ═══════════════════════════════════════════════════════════
 games.records = (function() {
     const nameEl = document.getElementById('recordsName');
@@ -1224,6 +1612,7 @@ games.records = (function() {
         { id: 'g2048',   icon: '🔢', name: '2048',           suffix: 'оч.' },
         { id: 'snake',   icon: '🐍', name: 'Змейка',         suffix: 'оч.' },
         { id: 'runner',  icon: '🏃', name: 'Раннер',         suffix: 'м'   },
+        { id: 'durak',   icon: '🃏', name: 'Дурак',          suffix: 'побед' },
     ];
     function render() {
         nameEl.textContent = Records.getName();

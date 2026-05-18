@@ -42,6 +42,13 @@
                 <div class="card-desc">Тапай — прыгай через Трампов</div>
             </div>
         </button>
+        <button class="game-card" data-game="durak">
+            <div class="card-emoji">🃏</div>
+            <div class="card-info">
+                <div class="card-title">Дурак</div>
+                <div class="card-desc">Классика 1×1 против бота</div>
+            </div>
+        </button>
         <button class="game-card" data-game="records">
             <div class="card-emoji">🏆</div>
             <div class="card-info">
@@ -49,6 +56,42 @@
                 <div class="card-desc">Твои лучшие результаты</div>
             </div>
         </button>
+    </div>
+</div>
+
+<!-- ═══ ДУРАК ═══ -->
+<div class="screen game-screen hidden" id="durakScreen">
+    <div class="game-header">
+        <button class="btn-back" data-back>←</button>
+        <div class="game-title">🃏 Дурак</div>
+        <div class="game-score" id="durakStatus">—</div>
+    </div>
+    <div class="durak-board">
+        <div class="ai-zone">
+            <div class="ai-info">Бот: <span id="durakAiCount">6</span> карт</div>
+            <div class="ai-hand" id="durakAiHand"></div>
+        </div>
+        <div class="middle-zone">
+            <div class="deck-zone">
+                <div class="trump-card-slot" id="durakTrumpSlot"></div>
+                <div class="deck-pile" id="durakDeckPile">
+                    <span id="durakDeckCount">24</span>
+                </div>
+            </div>
+            <div class="table-zone" id="durakTable">
+                <div class="table-hint">стол</div>
+            </div>
+            <div class="discard-zone">бито</div>
+        </div>
+        <div class="player-zone">
+            <div class="player-actions" id="durakActions"></div>
+            <div class="player-hand" id="durakHand"></div>
+        </div>
+    </div>
+    <div class="overlay hidden" id="durakOverScreen">
+        <h1 id="durakResult">Победа!</h1>
+        <p class="tagline" id="durakResultMsg"></p>
+        <button class="btn-play" id="durakRestartBtn">Ещё раз</button>
     </div>
 </div>
 

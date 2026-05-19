@@ -2372,28 +2372,30 @@ games.tower = (function() {
         const lvl  = def.levels[tower.level];
         const x = (tower.col + 0.5) * CELL;
         const y = (tower.row + 0.5) * CELL;
-
-        // фон башни
-        ctx.fillStyle = '#fff';
+        const BG_COLORS = {
+            seed:      ['#fff9e6', '#ffe066', '#ffd700'],
+            cheese:    ['#e8f5e9', '#66bb6a', '#43a047'],
+            bomb:      ['#fce4ec', '#ef5350', '#c62828'],
+            lightning: ['#e3f2fd', '#42a5f5', '#1565c0'],
+        };
+        const colors = BG_COLORS[tower.type] || ['#fff', '#ccc', '#999'];
+        const borders = [colors[1], colors[2], '#ffd84d'];
+        ctx.fillStyle = colors[0];
         ctx.beginPath();
-        ctx.roundRect(tower.col * CELL + 3, tower.row * CELL + 3, CELL - 6, CELL - 6, 6);
+        ctx.roundRect(tower.col * CELL + 2, tower.row * CELL + 2, CELL - 4, CELL - 4, 7);
         ctx.fill();
-        ctx.strokeStyle = tower.level === 2 ? '#ffd84d' : tower.level === 1 ? '#4cd964' : '#ccc';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = borders[tower.level] || colors[1];
+        ctx.lineWidth = tower.level === 2 ? 3 : 2;
         ctx.stroke();
-
-        // эмодзи башни
-        ctx.font = `${CELL * 0.55}px serif`;
+        ctx.font = `${CELL * 0.58}px serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(lvl.emoji.split('')[0], x, y);
-
-        // уровень точками
+        ctx.fillText(lvl.emoji[0], x, y - (tower.level > 0 ? 2 : 0));
         if (tower.level > 0) {
             ctx.fillStyle = '#ffd84d';
             for (let i = 0; i <= tower.level; i++) {
                 ctx.beginPath();
-                ctx.arc(tower.col * CELL + 8 + i * 7, tower.row * CELL + CELL - 7, 3, 0, Math.PI * 2);
+                ctx.arc(tower.col * CELL + 6 + i * 7, tower.row * CELL + CELL - 6, 3, 0, Math.PI * 2);
                 ctx.fill();
             }
         }

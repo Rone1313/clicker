@@ -125,6 +125,86 @@
     </div>
 </div>
 
+<!-- ═══ ОБОРОНА ХОМЯКА (TOWER DEFENSE) ═══ -->
+<div class="screen game-screen hidden" id="towerScreen">
+    <div class="game-header">
+        <button class="btn-back" data-back>←</button>
+        <div class="game-title">🏰 Оборона Хомяка</div>
+        <div class="game-score" id="twMapName">🌿 Луг</div>
+    </div>
+    <div class="tower-hud">
+        <div class="tw-stat">🌊 Волна: <span id="twWave">1</span></div>
+        <div class="tw-stat">❤ <span id="twLives">20</span></div>
+        <div class="tw-stat">🪙 <span id="twGold">150</span></div>
+    </div>
+    <div class="tower-canvas-wrap">
+        <canvas id="towerCanvas"></canvas>
+        <div class="tower-cell-info hidden" id="towerCellInfo">
+            <div class="tw-cell-text" id="twCellText">—</div>
+            <div class="tw-cell-actions">
+                <button class="tw-cell-btn upgrade hidden" id="twUpgradeBtn">⬆ Улучшить</button>
+                <button class="tw-cell-btn sell" id="twSellBtn">💰 Продать</button>
+                <button class="tw-cell-btn close" id="twCloseCell">✕</button>
+            </div>
+        </div>
+    </div>
+    <div class="tower-panel" id="towerPanel">
+        <button class="tower-btn selected" data-type="none">
+            <div class="tw-btn-emoji">👆</div>
+            <div class="tw-btn-name">Выбор</div>
+        </button>
+        <button class="tower-btn" data-type="seed">
+            <div class="tw-btn-emoji">🌰</div>
+            <div class="tw-btn-name">Семечки</div>
+            <div class="tw-btn-cost">50🪙</div>
+        </button>
+        <button class="tower-btn" data-type="cheese">
+            <div class="tw-btn-emoji">🧀</div>
+            <div class="tw-btn-name">Сыр</div>
+            <div class="tw-btn-cost">80🪙</div>
+        </button>
+        <button class="tower-btn" data-type="bomb">
+            <div class="tw-btn-emoji">💥</div>
+            <div class="tw-btn-name">Взрыв</div>
+            <div class="tw-btn-cost">120🪙</div>
+        </button>
+        <button class="tower-btn" data-type="lightning">
+            <div class="tw-btn-emoji">⚡</div>
+            <div class="tw-btn-name">Молния</div>
+            <div class="tw-btn-cost">200🪙</div>
+        </button>
+    </div>
+
+    <div class="overlay" id="towerStartScreen">
+        <h1>🏰 Оборона Хомяка</h1>
+        <p class="tagline">Звери идут к норе хомяка!<br>Ставь башни, защищай 🐹.</p>
+        <ul class="howto">
+            <li>🌰 Семечки — точный выстрел</li>
+            <li>🧀 Сыр — замедляет врагов</li>
+            <li>💥 Взрыв — урон по площади</li>
+            <li>⚡ Молния — цепная атака</li>
+            <li>👆 Тап по башне — улучшить/продать</li>
+        </ul>
+        <button class="btn-play" id="towerStartBtn">В БОЙ!</button>
+    </div>
+
+    <div class="overlay hidden" id="towerOverScreen">
+        <h1 id="towerResult">💀 Нора захвачена!</h1>
+        <p class="final-score">Волна: <span id="twFinal">0</span></p>
+        <p class="tagline" id="twOverMsg">Хомяки сражались храбро…</p>
+        <button class="btn-play" id="towerRestartBtn">Ещё раз</button>
+        <button class="btn-share" id="towerShareBtn">📤 Похвастаться</button>
+    </div>
+
+    <div class="overlay hidden" id="towerWinScreen">
+        <h1>🏆 Победа!</h1>
+        <p class="final-score" id="twWinMap">🌿 Луг</p>
+        <p class="tagline" id="twWinMsg">Все волны отражены!</p>
+        <button class="btn-play" id="towerNextBtn">Следующая карта ➜</button>
+        <button class="btn-share" id="towerWinShareBtn">📤 Похвастаться</button>
+    </div>
+</div>
+
 <!-- ═══ РЕКОРДЫ ═══ -->
 <div class="screen game-screen hidden" id="recordsScreen">
     <div class="game-header">

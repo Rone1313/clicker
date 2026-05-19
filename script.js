@@ -135,6 +135,7 @@ const screens = {
     snake:   document.getElementById('snakeScreen'),
     runner:  document.getElementById('runnerScreen'),
     durak:   document.getElementById('durakScreen'),
+    tower:   document.getElementById('towerScreen'),
     records: document.getElementById('recordsScreen'),
 };
 
@@ -2644,6 +2645,7 @@ games.records = (function() {
         { id: 'snake',   icon: '🐍', name: 'Змейка',         suffix: 'оч.' },
         { id: 'runner',  icon: '🏃', name: 'Раннер',         suffix: 'м'   },
         { id: 'durak',   icon: '🃏', name: 'Дурак',          suffix: 'побед' },
+        { id: 'tower',   icon: '🏰', name: 'Оборона Хомяка', suffix: 'волн'  },
     ];
     function render() {
         nameEl.textContent = Records.getName();

@@ -818,3 +818,163 @@ body {
 #runnerCanvas {
     background: linear-gradient(180deg, #1a2342 0%, #2a3868 60%, #4a6e3a 100%);
 }
+
+/* ═══ ОБОРОНА ХОМЯКА (TOWER DEFENSE) ═════════════ */
+#towerScreen {
+    background: #0a1a28;
+}
+
+.tower-hud {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.45);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 5;
+}
+
+.tw-stat {
+    font-size: 15px;
+    font-weight: 800;
+    color: #ffd84d;
+    white-space: nowrap;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+.tower-canvas-wrap {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    min-height: 0;
+    touch-action: none;
+    overflow: hidden;
+}
+
+#towerCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    aspect-ratio: 10 / 8;
+    border-radius: 10px;
+    box-shadow: 0 0 24px rgba(0, 0, 0, 0.45);
+    touch-action: none;
+    background: #c8e6a0;
+}
+
+/* Поп-ап башни */
+.tower-cell-info {
+    position: absolute;
+    left: 50%;
+    bottom: 8px;
+    transform: translateX(-50%);
+    background: rgba(15, 20, 40, 0.95);
+    border: 1px solid rgba(255, 216, 77, 0.5);
+    border-radius: 12px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 220px;
+    max-width: 92%;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    z-index: 6;
+}
+.tower-cell-info.hidden { display: none; }
+
+.tw-cell-text {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    text-align: center;
+}
+
+.tw-cell-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.tw-cell-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.tw-cell-btn.upgrade {
+    background: linear-gradient(180deg, #4cd964 0%, #2a9d3a 100%);
+    border-color: transparent;
+}
+.tw-cell-btn.sell {
+    background: linear-gradient(180deg, #ffd84d 0%, #ff9a1e 100%);
+    color: #1a1a2e;
+    border-color: transparent;
+}
+.tw-cell-btn.close {
+    width: 32px;
+    padding: 7px 0;
+    text-align: center;
+}
+.tw-cell-btn.hidden { display: none; }
+.tw-cell-btn:active { transform: translateY(1px); }
+
+/* Нижняя панель башен */
+.tower-panel {
+    display: flex;
+    gap: 6px;
+    padding: 8px 6px max(8px, env(safe-area-inset-bottom));
+    background: rgba(0, 0, 0, 0.55);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex-shrink: 0;
+}
+.tower-panel::-webkit-scrollbar { display: none; }
+
+.tower-btn {
+    flex: 1 1 0;
+    min-width: 64px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 2px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 6px 4px;
+    color: #fff;
+    font: inherit;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    transition: transform 0.1s, border-color 0.1s, background 0.1s, box-shadow 0.1s;
+}
+.tower-btn:active { transform: scale(0.94); }
+.tower-btn.selected {
+    border-color: #ffd84d;
+    background: rgba(255, 216, 77, 0.18);
+    box-shadow: 0 0 14px rgba(255, 216, 77, 0.35);
+}
+.tw-btn-emoji {
+    font-size: 26px;
+    line-height: 1;
+}
+.tw-btn-name {
+    font-size: 11px;
+    font-weight: 700;
+}
+.tw-btn-cost {
+    font-size: 10px;
+    color: #ffd84d;
+    font-weight: 800;
+}

@@ -1820,6 +1820,821 @@ games.durak = (function() {
 // ═══════════════════════════════════════════════════════════
 //  МОДУЛЬ 6 — РЕКОРДЫ
 // ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+//  МОДУЛЬ 6 — TOWER DEFENSE «Оборона Хомяка»
+//  Вставить в script.js ПЕРЕД строкой: games.records = (function() {
+// ═══════════════════════════════════════════════════════════
+games.tower = (function() {
+
+    // ─── DOM ──────────────────────────────────────────────
+    const canvas      = document.getElementById('towerCanvas');
+    const ctx         = canvas.getContext('2d');
+    const waveEl      = document.getElementById('twWave');
+    const livesEl     = document.getElementById('twLives');
+    const goldEl      = document.getElementById('twGold');
+    const startScreen = document.getElementById('towerStartScreen');
+    const overScreen  = document.getElementById('towerOverScreen');
+    const winScreen   = document.getElementById('towerWinScreen');
+    const resultEl    = document.getElementById('towerResult');
+    const finalEl     = document.getElementById('twFinal');
+    const overMsgEl   = document.getElementById('twOverMsg');
+    const winMsgEl    = document.getElementById('twWinMsg');
+    const winMapEl    = document.getElementById('twWinMap');
+    const mapNameEl   = document.getElementById('twMapName');
+    const startBtn    = document.getElementById('towerStartBtn');
+    const restartBtn  = document.getElementById('towerRestartBtn');
+    const nextBtn     = document.getElementById('towerNextBtn');
+    const panel       = document.getElementById('towerPanel');
+    const cellInfo    = document.getElementById('towerCellInfo');
+    const cellText    = document.getElementById('twCellText');
+    const upgradeBtn  = document.getElementById('twUpgradeBtn');
+    const sellBtn     = document.getElementById('twSellBtn');
+    const closeCell   = document.getElementById('twCloseCell');
+
+    let active = false, rafId = 0, lastTime = 0;
+
+    // ─── КАРТЫ (5 штук) ────────────────────────────────────
+    const MAPS = [
+        {
+            name: '🌿 Луг',
+            bg: ['#c8e6a0', '#b8dc8a'],   // светло-зелёный
+            pathColor: '#d4b483',
+            // путь задаётся как последовательность [col, row]
+            path: [[0,3],[1,3],[2,3],[2,2],[2,1],[3,1],[4,1],[4,2],[4,3],[5,3],[6,3],[6,2],[6,1],[7,1],[8,1],[8,2],[8,3],[8,4],[8,5],[7,5],[6,5],[5,5],[4,5],[3,5],[3,6],[3,7],[4,7],[5,7],[6,7],[7,7],[8,7],[9,7]],
+            enemies: ['🐺','🦊','🐍','🦝'],
+            waveCount: 8,
+        },
+        {
+            name: '🌲 Лес',
+            bg: ['#7ab648', '#6aa038'],
+            pathColor: '#c8a464',
+            path: [[0,4],[1,4],[2,4],[3,4],[3,3],[3,2],[3,1],[4,1],[5,1],[6,1],[6,2],[6,3],[6,4],[6,5],[5,5],[4,5],[3,5],[3,6],[3,7],[4,7],[5,7],[6,7],[7,7],[7,6],[7,5],[8,5],[9,5]],
+            enemies: ['🐺','🦊','🐗','🦡','🐍'],
+            waveCount: 10,
+        },
+        {
+            name: '🏔 Горы',
+            bg: ['#b0b8c0', '#9aa2aa'],
+            pathColor: '#c8b496',
+            path: [[0,1],[1,1],[2,1],[2,2],[2,3],[2,4],[3,4],[4,4],[5,4],[5,3],[5,2],[5,1],[6,1],[7,1],[7,2],[7,3],[7,4],[7,5],[7,6],[6,6],[5,6],[4,6],[3,6],[3,7],[4,7],[5,7],[6,7],[7,7],[8,7],[9,7]],
+            enemies: ['🐗','🦡','🐻','🦝','🐺'],
+            waveCount: 12,
+        },
+        {
+            name: '❄️ Снег',
+            bg: ['#dceef8', '#c8e2f0'],
+            pathColor: '#b8d0e8',
+            path: [[0,0],[1,0],[2,0],[3,0],[4,0],[4,1],[4,2],[4,3],[3,3],[2,3],[1,3],[1,4],[1,5],[1,6],[1,7],[2,7],[3,7],[4,7],[5,7],[5,6],[5,5],[5,4],[6,4],[7,4],[8,4],[8,5],[8,6],[8,7],[9,7]],
+            enemies: ['🐻','🦡','🐗','🐺','🦊','🐍'],
+            waveCount: 14,
+        },
+        {
+            name: '🚀 Космос',
+            bg: ['#1a1a3a', '#2a2a5a'],
+            pathColor: '#3a3a7a',
+            path: [[0,3],[1,3],[1,2],[1,1],[2,1],[3,1],[4,1],[4,2],[4,3],[4,4],[3,4],[2,4],[1,4],[1,5],[1,6],[2,6],[3,6],[4,6],[5,6],[5,5],[5,4],[5,3],[6,3],[7,3],[7,2],[7,1],[8,1],[9,1],[9,2],[9,3],[9,4],[9,5],[9,6],[9,7]],
+            enemies: ['👾','🤖','👽','🛸','👾'],
+            waveCount: 16,
+        },
+    ];
+
+    // ─── БАШНИ ─────────────────────────────────────────────
+    const TOWER_DEFS = {
+        seed: {
+            levels: [
+                { emoji:'🌰', name:'Семечки 1', cost:50,  dmg:8,  range:2.2, rate:1000, slow:0,    splash:0,   chain:0 },
+                { emoji:'🌰🌰', name:'Семечки 2', cost:60,  dmg:14, range:2.5, rate:850,  slow:0,    splash:0,   chain:0 },
+                { emoji:'🌰🌰🌰', name:'Семечки 3', cost:80,  dmg:22, range:2.8, rate:700,  slow:0,    splash:0,   chain:0 },
+            ],
+            sellMult: 0.6,
+        },
+        cheese: {
+            levels: [
+                { emoji:'🧀',    name:'Сыр 1',    cost:80,  dmg:5,  range:2.0, rate:1200, slow:0.45, splash:0,   chain:0 },
+                { emoji:'🧀🧀',  name:'Сыр 2',    cost:100, dmg:9,  range:2.3, rate:1000, slow:0.55, splash:0,   chain:0 },
+                { emoji:'🧀🧀🧀',name:'Сыр 3',    cost:130, dmg:14, range:2.6, rate:900,  slow:0.65, splash:0,   chain:0 },
+            ],
+            sellMult: 0.6,
+        },
+        bomb: {
+            levels: [
+                { emoji:'💥',    name:'Взрыв 1',  cost:120, dmg:25, range:2.0, rate:2000, slow:0,    splash:1.2, chain:0 },
+                { emoji:'💥💥',  name:'Взрыв 2',  cost:150, dmg:40, range:2.2, rate:1800, slow:0,    splash:1.5, chain:0 },
+                { emoji:'💥💥💥',name:'Взрыв 3',  cost:180, dmg:60, range:2.5, rate:1600, slow:0,    splash:1.8, chain:0 },
+            ],
+            sellMult: 0.6,
+        },
+        lightning: {
+            levels: [
+                { emoji:'⚡',    name:'Молния 1', cost:200, dmg:30, range:2.5, rate:1500, slow:0,    splash:0,   chain:2 },
+                { emoji:'⚡⚡',  name:'Молния 2', cost:250, dmg:50, range:2.8, rate:1300, slow:0,    splash:0,   chain:3 },
+                { emoji:'⚡⚡⚡',name:'Молния 3', cost:300, dmg:75, range:3.2, rate:1100, slow:0,    splash:0,   chain:4 },
+            ],
+            sellMult: 0.6,
+        },
+    };
+
+    // ─── ВРАГИ ─────────────────────────────────────────────
+    const ENEMY_BASE = {
+        '🐺': { hp:60,  speed:1.0, reward:8,  size:0.55 },
+        '🦊': { hp:40,  speed:1.4, reward:6,  size:0.48 },
+        '🐍': { hp:80,  speed:0.8, reward:10, size:0.52 },
+        '🦝': { hp:50,  speed:1.2, reward:7,  size:0.50 },
+        '🐗': { hp:120, speed:0.7, reward:15, size:0.60 },
+        '🦡': { hp:100, speed:0.9, reward:12, size:0.58 },
+        '🐻': { hp:200, speed:0.5, reward:25, size:0.70 },
+        '👾': { hp:90,  speed:1.1, reward:14, size:0.54 },
+        '🤖': { hp:150, speed:0.8, reward:20, size:0.62 },
+        '👽': { hp:70,  speed:1.5, reward:10, size:0.50 },
+        '🛸': { hp:300, speed:0.4, reward:40, size:0.80 }, // босс
+    };
+
+    // ─── СОСТОЯНИЕ ИГРЫ ────────────────────────────────────
+    let G = {};   // game state
+    let selectedType = 'none';
+    let selectedCell = null;  // {col, row}
+
+    const COLS = 10, ROWS = 8;
+    let CELL = 40;  // пересчитывается при resize
+
+    function resize() {
+        const W = canvas.clientWidth  || canvas.parentElement.clientWidth  || 360;
+        const H = canvas.clientHeight || canvas.parentElement.clientHeight || 360;
+        const DPR = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width  = W * DPR;
+        canvas.height = H * DPR;
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+        CELL = Math.min(W / COLS, H / ROWS);
+    }
+
+    function cw() { return canvas.clientWidth  || 360; }
+    function ch() { return canvas.clientHeight || 360; }
+
+    // ─── ИНИЦИАЛИЗАЦИЯ ИГРЫ ───────────────────────────────
+    function initGame(mapIdx) {
+        const map = MAPS[mapIdx];
+        const pathSet = new Set(map.path.map(([c,r]) => `${c},${r}`));
+
+        // Сетка: null = пусто, 'path' = дорожка, объект = башня
+        const grid = Array.from({length: ROWS}, (_,r) =>
+            Array.from({length: COLS}, (_,c) =>
+                pathSet.has(`${c},${r}`) ? 'path' : null
+            )
+        );
+
+        G = {
+            mapIdx,
+            map,
+            grid,
+            pathSet,
+            towers: [],     // [{col,row,type,level,cooldown,beams:[]}]
+            enemies: [],    // [{emoji,hp,maxHp,speed,baseSpeed,reward,size,t,slowTimer,x,y}]
+            particles: [],  // взрывы/эффекты
+            wave: 1,
+            waveActive: false,
+            waveTimer: 0,
+            spawnQueue: [],
+            spawnTimer: 0,
+            lives: 20,
+            gold: 150,
+            score: 0,
+            running: false,
+            betweenWaves: true,
+            betweenTimer: 3000,
+        };
+        updateHUD();
+    }
+
+    function updateHUD() {
+        waveEl.textContent = G.wave;
+        livesEl.textContent = G.lives;
+        goldEl.textContent  = G.gold;
+    }
+
+    // ─── ВОЛНЫ ────────────────────────────────────────────
+    function buildWave(waveNum, map) {
+        const queue = [];
+        const count = 6 + waveNum * 2;
+        const enemies = map.enemies;
+        const hpMult  = 1 + (waveNum - 1) * 0.25;
+        const isBoss  = waveNum % 4 === 0;
+
+        for (let i = 0; i < count; i++) {
+            let emoji;
+            if (isBoss && i === Math.floor(count / 2)) {
+                // босс в середине волны
+                emoji = map.name.includes('Космос') ? '🛸' : '🐻';
+            } else {
+                emoji = enemies[Math.floor(Math.random() * enemies.length)];
+            }
+            const base = ENEMY_BASE[emoji] || ENEMY_BASE['🐺'];
+            queue.push({
+                emoji,
+                hp:        Math.round(base.hp * hpMult),
+                maxHp:     Math.round(base.hp * hpMult),
+                speed:     base.speed,
+                baseSpeed: base.speed,
+                reward:    base.reward,
+                size:      base.size,
+                pathIdx:   0,
+                t:         0,
+                slowTimer: 0,
+                x: 0, y: 0,
+            });
+        }
+        return queue;
+    }
+
+    function startWave() {
+        G.betweenWaves = false;
+        G.waveActive   = true;
+        G.spawnQueue   = buildWave(G.wave, G.map);
+        G.spawnTimer   = 0;
+        waveEl.textContent = G.wave;
+    }
+
+    // ─── ДВИЖЕНИЕ ВРАГОВ ──────────────────────────────────
+    function pathPos(t) {
+        // t = float: целая часть = индекс точки, дробная = интерполяция
+        const path = G.map.path;
+        const idx = Math.floor(t);
+        if (idx >= path.length - 1) return null;  // дошёл до конца
+        const [c0, r0] = path[idx];
+        const [c1, r1] = path[idx + 1];
+        const frac = t - idx;
+        return {
+            x: (c0 + (c1 - c0) * frac + 0.5) * CELL,
+            y: (r0 + (r1 - r0) * frac + 0.5) * CELL,
+        };
+    }
+
+    function updateEnemies(dt) {
+        for (let i = G.enemies.length - 1; i >= 0; i--) {
+            const e = G.enemies[i];
+            // замедление
+            if (e.slowTimer > 0) {
+                e.slowTimer -= dt * 1000;
+                if (e.slowTimer <= 0) e.speed = e.baseSpeed;
+            }
+            // движение
+            const pathLen = G.map.path.length - 1;
+            e.t += e.speed * dt * 1.2;   // 1.2 = базовая скорость в клетках/с
+            if (e.t >= pathLen) {
+                // дошёл до базы
+                G.lives = Math.max(0, G.lives - 1);
+                G.enemies.splice(i, 1);
+                updateHUD();
+                if (G.lives <= 0) { gameOver(); return; }
+                continue;
+            }
+            const pos = pathPos(e.t);
+            if (pos) { e.x = pos.x; e.y = pos.y; }
+        }
+    }
+
+    // ─── БАШНИ СТРЕЛЯЮТ ───────────────────────────────────
+    function updateTowers(dt) {
+        for (const tower of G.towers) {
+            const def = TOWER_DEFS[tower.type];
+            const lvl = def.levels[tower.level];
+            tower.cooldown = (tower.cooldown || 0) - dt * 1000;
+            tower.beams = [];
+            if (tower.cooldown > 0) continue;
+
+            const tx = (tower.col + 0.5) * CELL;
+            const ty = (tower.row + 0.5) * CELL;
+            const range = lvl.range * CELL;
+
+            // найти ближайшего к концу пути врага в радиусе
+            let target = null;
+            for (const e of G.enemies) {
+                if (Math.hypot(e.x - tx, e.y - ty) <= range) {
+                    if (!target || e.t > target.t) target = e;
+                }
+            }
+            if (!target) continue;
+
+            tower.cooldown = lvl.rate;
+
+            if (lvl.splash > 0) {
+                // площадная атака
+                const splashR = lvl.splash * CELL;
+                for (const e of G.enemies) {
+                    if (Math.hypot(e.x - target.x, e.y - target.y) <= splashR) {
+                        e.hp -= lvl.dmg;
+                        addParticle(e.x, e.y, '💥');
+                    }
+                }
+                tower.beams.push({ x: target.x, y: target.y, type: 'bomb' });
+            } else if (lvl.chain > 0) {
+                // цепная молния
+                let current = target;
+                let hit = new Set([current]);
+                let prev = { x: tx, y: ty };
+                for (let c = 0; c < lvl.chain; c++) {
+                    current.hp -= lvl.dmg;
+                    addParticle(current.x, current.y, '⚡');
+                    tower.beams.push({ x1: prev.x, y1: prev.y, x2: current.x, y2: current.y, type: 'lightning' });
+                    prev = { x: current.x, y: current.y };
+                    // следующий ближайший незадетый
+                    let next = null;
+                    for (const e of G.enemies) {
+                        if (hit.has(e)) continue;
+                        if (Math.hypot(e.x - current.x, e.y - current.y) <= CELL * 2.5) {
+                            if (!next || e.t > next.t) next = e;
+                        }
+                    }
+                    if (!next) break;
+                    hit.add(next);
+                    current = next;
+                }
+            } else {
+                // обычный выстрел
+                target.hp -= lvl.dmg;
+                if (lvl.slow > 0) {
+                    target.speed = target.baseSpeed * (1 - lvl.slow);
+                    target.slowTimer = 1500;
+                }
+                tower.beams.push({ x: target.x, y: target.y, type: 'seed' });
+                addParticle(target.x, target.y, lvl.slow > 0 ? '🧊' : '🌰');
+            }
+
+            // убрать мёртвых
+            for (let i = G.enemies.length - 1; i >= 0; i--) {
+                if (G.enemies[i].hp <= 0) {
+                    G.gold += G.enemies[i].reward;
+                    G.score += G.enemies[i].reward;
+                    addParticle(G.enemies[i].x, G.enemies[i].y, '✨');
+                    G.enemies.splice(i, 1);
+                    updateHUD();
+                }
+            }
+        }
+    }
+
+    // ─── ЧАСТИЦЫ ──────────────────────────────────────────
+    function addParticle(x, y, emoji) {
+        G.particles.push({ x, y, emoji, age: 0, life: 0.5 });
+    }
+    function updateParticles(dt) {
+        for (let i = G.particles.length - 1; i >= 0; i--) {
+            G.particles[i].age += dt;
+            if (G.particles[i].age >= G.particles[i].life) G.particles.splice(i, 1);
+        }
+    }
+
+    // ─── СПАВН ────────────────────────────────────────────
+    function updateSpawn(dt) {
+        if (!G.waveActive) return;
+        G.spawnTimer -= dt * 1000;
+        if (G.spawnTimer <= 0 && G.spawnQueue.length > 0) {
+            const e = G.spawnQueue.shift();
+            const startPos = pathPos(0);
+            if (startPos) { e.x = startPos.x; e.y = startPos.y; }
+            e.t = 0;
+            G.enemies.push(e);
+            G.spawnTimer = 900 - Math.min(500, G.wave * 30);
+        }
+        if (G.spawnQueue.length === 0 && G.enemies.length === 0) {
+            // волна завершена
+            G.waveActive = false;
+            if (G.wave >= G.map.waveCount) {
+                waveWin();
+            } else {
+                G.wave++;
+                G.betweenWaves = true;
+                G.betweenTimer = 4000;
+                G.gold += 30 + G.wave * 10;  // бонус между волнами
+                updateHUD();
+            }
+        }
+    }
+
+    // ─── ОТРИСОВКА ────────────────────────────────────────
+    function render() {
+        const W = cw(), H = ch();
+        ctx.clearRect(0, 0, W, H);
+
+        const map = G.map;
+        const [bg1, bg2] = map.bg;
+
+        // фон с градиентом
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const isPath = G.pathSet.has(`${c},${r}`);
+                ctx.fillStyle = isPath ? map.pathColor : (((c + r) % 2 === 0) ? bg1 : bg2);
+                ctx.fillRect(c * CELL, r * CELL, CELL, CELL);
+            }
+        }
+
+        // декоративные детали карты (деревья/горы/звёзды)
+        drawMapDetails(map);
+
+        // линии сетки (слабые)
+        ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+        ctx.lineWidth = 0.5;
+        for (let r = 0; r <= ROWS; r++) {
+            ctx.beginPath(); ctx.moveTo(0, r * CELL); ctx.lineTo(W, r * CELL); ctx.stroke();
+        }
+        for (let c = 0; c <= COLS; c++) {
+            ctx.beginPath(); ctx.moveTo(c * CELL, 0); ctx.lineTo(c * CELL, H); ctx.stroke();
+        }
+
+        // путь стрелочками
+        drawPathArrows();
+
+        // база (конец пути)
+        drawBase();
+
+        // башни
+        for (const tower of G.towers) {
+            drawTower(tower);
+        }
+
+        // лучи выстрелов
+        for (const tower of G.towers) {
+            if (!tower.beams) continue;
+            const tx = (tower.col + 0.5) * CELL;
+            const ty = (tower.row + 0.5) * CELL;
+            for (const b of tower.beams) {
+                if (b.type === 'lightning') {
+                    ctx.strokeStyle = 'rgba(255,255,100,0.8)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.moveTo(b.x1, b.y1); ctx.lineTo(b.x2, b.y2); ctx.stroke();
+                } else if (b.type === 'seed') {
+                    ctx.strokeStyle = 'rgba(200,150,50,0.5)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(b.x, b.y); ctx.stroke();
+                } else if (b.type === 'bomb') {
+                    ctx.strokeStyle = 'rgba(255,80,0,0.6)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(b.x, b.y); ctx.stroke();
+                }
+            }
+        }
+
+        // враги
+        for (const e of G.enemies) {
+            drawEnemy(e);
+        }
+
+        // частицы
+        for (const p of G.particles) {
+            ctx.globalAlpha = Math.max(0, 1 - p.age / p.life);
+            ctx.font = `${CELL * 0.5}px serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(p.emoji, p.x, p.y - p.age * CELL * 0.8);
+        }
+        ctx.globalAlpha = 1;
+
+        // подсветка выделенной клетки
+        if (selectedCell) {
+            const { col, row } = selectedCell;
+            ctx.strokeStyle = '#4cd964';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(col * CELL + 2, row * CELL + 2, CELL - 4, CELL - 4);
+        }
+
+        // радиус башни при выборе типа
+        if (selectedType !== 'none' && TOWER_DEFS[selectedType]) {
+            const lvl = TOWER_DEFS[selectedType].levels[0];
+            const range = lvl.range * CELL;
+            // нарисовать под пальцем — нет, но при наведении на пустую ячейку
+        }
+
+        // между волнами — таймер
+        if (G.betweenWaves && G.running) {
+            const sec = Math.ceil(G.betweenTimer / 1000);
+            ctx.fillStyle = 'rgba(0,0,0,0.45)';
+            ctx.fillRect(W/2 - 120, H/2 - 26, 240, 52);
+            ctx.fillStyle = '#fff';
+            ctx.font = `bold ${CELL * 0.55}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`⏳ Следующая волна: ${sec}с`, W/2, H/2);
+        }
+    }
+
+    function drawMapDetails(map) {
+        const name = map.name;
+        ctx.font = `${CELL * 0.55}px serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.globalAlpha = 0.35;
+        // расставляем декор на не-дорожечных клетках
+        const decorEmoji = name.includes('Лес') ? '🌲' :
+                           name.includes('Гор') ? '⛰' :
+                           name.includes('Снег') ? '❄️' :
+                           name.includes('Космос') ? '⭐' : '🌸';
+        // каждая 3-я свободная клетка
+        let decorIdx = 0;
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (!G.pathSet.has(`${c},${r}`) && !G.grid[r][c]) {
+                    decorIdx++;
+                    if (decorIdx % 4 === 0) {
+                        ctx.fillText(decorEmoji, (c + 0.5) * CELL, (r + 0.5) * CELL);
+                    }
+                }
+            }
+        }
+        ctx.globalAlpha = 1;
+    }
+
+    function drawPathArrows() {
+        const path = G.map.path;
+        ctx.fillStyle = 'rgba(0,0,0,0.12)';
+        ctx.font = `${CELL * 0.4}px serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        for (let i = 0; i < path.length - 1; i += 2) {
+            const [c0, r0] = path[i];
+            const [c1, r1] = path[i + 1];
+            const arrow = c1 > c0 ? '→' : c1 < c0 ? '←' : r1 > r0 ? '↓' : '↑';
+            ctx.fillText(arrow, (c0 + 0.5) * CELL, (r0 + 0.5) * CELL);
+        }
+        // финальная точка — нора хомяка
+        const [lc, lr] = path[path.length - 1];
+        ctx.font = `${CELL * 0.7}px serif`;
+        ctx.globalAlpha = 0.8;
+        ctx.fillText('🐹', (lc + 0.5) * CELL, (lr + 0.5) * CELL);
+        ctx.globalAlpha = 1;
+    }
+
+    function drawBase() {
+        // уже нарисована в drawPathArrows
+    }
+
+    function drawTower(tower) {
+        const def  = TOWER_DEFS[tower.type];
+        const lvl  = def.levels[tower.level];
+        const x = (tower.col + 0.5) * CELL;
+        const y = (tower.row + 0.5) * CELL;
+
+        // фон башни
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.roundRect(tower.col * CELL + 3, tower.row * CELL + 3, CELL - 6, CELL - 6, 6);
+        ctx.fill();
+        ctx.strokeStyle = tower.level === 2 ? '#ffd84d' : tower.level === 1 ? '#4cd964' : '#ccc';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // эмодзи башни
+        ctx.font = `${CELL * 0.55}px serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(lvl.emoji.split('')[0], x, y);
+
+        // уровень точками
+        if (tower.level > 0) {
+            ctx.fillStyle = '#ffd84d';
+            for (let i = 0; i <= tower.level; i++) {
+                ctx.beginPath();
+                ctx.arc(tower.col * CELL + 8 + i * 7, tower.row * CELL + CELL - 7, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    }
+
+    function drawEnemy(e) {
+        const size = CELL * e.size;
+        ctx.font = `${size}px serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        // замедление — синеватый фильтр (эффект инея)
+        if (e.slowTimer > 0) {
+            ctx.globalAlpha = 0.9;
+            ctx.filter = 'hue-rotate(180deg) saturate(1.5)';
+        }
+        ctx.fillText(e.emoji, e.x, e.y);
+        ctx.filter = 'none';
+        ctx.globalAlpha = 1;
+
+        // полоска HP
+        const barW = CELL * 0.8;
+        const barH = 4;
+        const bx = e.x - barW / 2;
+        const by = e.y - size * 0.55;
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fillRect(bx, by, barW, barH);
+        const pct = Math.max(0, e.hp / e.maxHp);
+        ctx.fillStyle = pct > 0.5 ? '#4cd964' : pct > 0.25 ? '#ff9500' : '#ff3b3b';
+        ctx.fillRect(bx, by, barW * pct, barH);
+    }
+
+    // ─── ГЛАВНЫЙ ЦИКЛ ─────────────────────────────────────
+    function loop(now) {
+        if (!active) return;
+        const dt = Math.min(0.05, (now - lastTime) / 1000) || 0;
+        lastTime = now;
+
+        if (G.running) {
+            if (G.betweenWaves) {
+                G.betweenTimer -= dt * 1000;
+                if (G.betweenTimer <= 0) startWave();
+            } else {
+                updateSpawn(dt);
+                updateEnemies(dt);
+                updateTowers(dt);
+                updateParticles(dt);
+            }
+        }
+        render();
+        rafId = requestAnimationFrame(loop);
+    }
+
+    // ─── НАЖАТИЕ НА CANVAS ────────────────────────────────
+    function onCanvasTap(e) {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+        const cy = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+        const col = Math.floor(cx / CELL);
+        const row = Math.floor(cy / CELL);
+        if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return;
+
+        const cell = G.grid[row][col];
+
+        if (cell === 'path') return;  // нельзя строить на дороге
+
+        if (cell && typeof cell === 'object') {
+            // уже есть башня — показать инфо
+            selectedCell = { col, row };
+            selectedType = 'none';
+            setAllBtnsUnselected();
+            document.querySelector('.tower-btn[data-type="none"]').classList.add('selected');
+            showCellInfo(col, row);
+            return;
+        }
+
+        // пустая ячейка
+        hideCellInfo();
+        if (selectedType === 'none') {
+            selectedCell = null;
+            return;
+        }
+
+        // поставить башню
+        const def = TOWER_DEFS[selectedType];
+        const cost = def.levels[0].cost;
+        if (G.gold < cost) {
+            // мало монет — мигнуть
+            goldEl.style.color = '#ff3b3b';
+            setTimeout(() => goldEl.style.color = '', 500);
+            return;
+        }
+        G.gold -= cost;
+        G.grid[row][col] = { type: selectedType, level: 0, col, row, cooldown: 0, beams: [] };
+        G.towers.push(G.grid[row][col]);
+        updateHUD();
+        if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    }
+
+    function showCellInfo(col, row) {
+        const tower = G.grid[row][col];
+        if (!tower || typeof tower !== 'object') return;
+        const def = TOWER_DEFS[tower.type];
+        const lvl = def.levels[tower.level];
+        cellText.textContent = `${lvl.emoji.split('')[0]} ${lvl.name}`;
+        const sellPrice = Math.round(def.levels.slice(0, tower.level + 1).reduce((s, l) => s + l.cost, 0) * def.sellMult);
+        const canUpgrade = tower.level < 2;
+        if (canUpgrade) {
+            const nextCost = def.levels[tower.level + 1].cost;
+            upgradeBtn.textContent = `⬆ Улучшить ${nextCost}🪙`;
+            upgradeBtn.classList.remove('hidden');
+            upgradeBtn.onclick = () => {
+                if (G.gold < nextCost) return;
+                G.gold -= nextCost;
+                tower.level++;
+                updateHUD();
+                showCellInfo(col, row);
+            };
+        } else {
+            upgradeBtn.classList.add('hidden');
+        }
+        sellBtn.textContent = `💰 Продать ${sellPrice}🪙`;
+        sellBtn.onclick = () => {
+            G.gold += sellPrice;
+            G.grid[row][col] = null;
+            G.towers = G.towers.filter(t => !(t.col === col && t.row === row));
+            updateHUD();
+            hideCellInfo();
+            selectedCell = null;
+        };
+        cellInfo.classList.remove('hidden');
+    }
+
+    function hideCellInfo() {
+        cellInfo.classList.add('hidden');
+        selectedCell = null;
+    }
+
+    function setAllBtnsUnselected() {
+        panel.querySelectorAll('.tower-btn').forEach(b => b.classList.remove('selected'));
+    }
+
+    // ─── КОНЕЦ ИГРЫ ───────────────────────────────────────
+    function gameOver() {
+        G.running = false;
+        finalEl.textContent = G.wave;
+        const isBest = Records.update('tower', G.wave);
+        overMsgEl.textContent = isBest ? '🏆 Новый рекорд по волнам!' :
+            G.wave < 3 ? 'Хомяки не успели подготовиться…' :
+            G.wave < 6 ? 'Достойная оборона!' : 'Хомяки сражались храбро!';
+        resultEl.textContent = '💀 Нора захвачена!';
+        overScreen.classList.remove('hidden');
+        if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+    }
+
+    function waveWin() {
+        G.running = false;
+        winMapEl.textContent = G.map.name;
+        const nextIdx = G.mapIdx + 1;
+        if (nextIdx < MAPS.length) {
+            winMsgEl.textContent = `Все ${G.map.waveCount} волн отражены! Идём дальше!`;
+            nextBtn.textContent = `Следующая карта: ${MAPS[nextIdx].name} ➜`;
+            nextBtn.onclick = () => {
+                winScreen.classList.add('hidden');
+                startMap(nextIdx);
+            };
+        } else {
+            winMsgEl.textContent = '🏆 Все 5 карт пройдены! Хомяки — чемпионы!';
+            nextBtn.textContent = 'Начать сначала';
+            nextBtn.onclick = () => {
+                winScreen.classList.add('hidden');
+                startMap(0);
+            };
+        }
+        winScreen.classList.remove('hidden');
+    }
+
+    function startMap(mapIdx) {
+        hideCellInfo();
+        selectedType = 'none';
+        setAllBtnsUnselected();
+        document.querySelector('.tower-btn[data-type="none"]').classList.add('selected');
+        initGame(mapIdx);
+        G.running = true;
+        startScreen.classList.add('hidden');
+        overScreen.classList.add('hidden');
+        winScreen.classList.add('hidden');
+        mapNameEl.textContent = MAPS[mapIdx].name;
+        startWave();
+    }
+
+    // ─── СОБЫТИЯ ──────────────────────────────────────────
+    const onTap    = e => onCanvasTap(e);
+    const onResize = () => resize();
+
+    panel.querySelectorAll('.tower-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            setAllBtnsUnselected();
+            btn.classList.add('selected');
+            selectedType = btn.dataset.type;
+            hideCellInfo();
+        });
+    });
+    closeCell.addEventListener('click', hideCellInfo);
+
+    startBtn.addEventListener('click', () => {
+        startMap(0);
+    });
+    restartBtn.addEventListener('click', () => {
+        overScreen.classList.add('hidden');
+        startScreen.classList.remove('hidden');
+        mapNameEl.textContent = MAPS[0].name;
+    });
+
+    wireShare('towerShareBtn',    () => `🏰 Дошёл до ${document.getElementById('twFinal').textContent} волны в Обороне Хомяка!`);
+    wireShare('towerWinShareBtn', () => `🏆 Прошёл карту ${G.map?.name || ''} в Обороне Хомяка!`);
+
+    function start() {
+        active = true;
+        resize();
+        startScreen.classList.remove('hidden');
+        overScreen.classList.add('hidden');
+        winScreen.classList.add('hidden');
+        mapNameEl.textContent = MAPS[0].name;
+        canvas.addEventListener('touchstart', onTap, { passive: false });
+        canvas.addEventListener('mousedown',  onTap);
+        window.addEventListener('resize', onResize);
+        lastTime = performance.now();
+        initGame(0);
+        rafId = requestAnimationFrame(loop);
+    }
+    function stop() {
+        active = false;
+        cancelAnimationFrame(rafId);
+        canvas.removeEventListener('touchstart', onTap);
+        canvas.removeEventListener('mousedown',  onTap);
+        window.removeEventListener('resize', onResize);
+        G.running = false;
+    }
+    return { start, stop };
+})();
+
 games.records = (function() {
     const nameEl = document.getElementById('recordsName');
     const listEl = document.getElementById('recordsList');
